@@ -612,7 +612,7 @@ function defHS(){return {dur:6,list:[{t:'video',on:1},{t:'logo',on:1}].concat(P.
 function normHS(x){
  const s=x&&Array.isArray(x.list)?JSON.parse(JSON.stringify(x)):defHS();
  s.dur=Math.min(20,Math.max(3,Number(s.dur)||6));
- s.list=s.list.filter(y=>y&&(y.t==='video'||y.t==='logo'||(y.t==='product'&&y.p>=0&&y.p<P.length)||(y.t==='image'&&y.img)));
+ s.list=s.list.filter(y=>y&&(y.t==='video'||y.t==='logo'||(y.t==='product'&&y.p>=0&&y.p<P.length)||(y.t==='image'&&y.img)||(y.t==='vid'&&y.src)));
  if(!s.list.some(y=>y.t==='video'))s.list.unshift({t:'video',on:1});
  if(!s.list.some(y=>y.t==='logo'))s.list.splice(1,0,{t:'logo',on:1});
  P.forEach((_,i)=>{if(!s.list.some(y=>y.t==='product'&&y.p===i))s.list.push({t:'product',p:i,on:1})});
@@ -637,6 +637,11 @@ function won(k){
 const updatePrices=()=>document.querySelectorAll('[data-pr]').forEach(e=>e.textContent=won(+e.dataset.pr));
 const $=id=>document.getElementById(id);
 function toast(m){const t=$('toast');t.textContent=m;t.classList.add('on');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('on'),1800)}
+function vidSlide(x){
+ const t=(x.txt&&(x.txt[lang]||x.txt.en))||{},lk=x.link||'shop';
+ const att=lk==='club'?'href="#club" data-v="club"':/^p\d+$/.test(lk)?`href="#p${+lk.slice(1)+1}" data-open="${+lk.slice(1)}"`:'href="#shop" data-v="shop"';
+ return `<div class="s s1 vslide"><video class="vid" muted playsinline preload="auto" disablepictureinpicture src="${escH(x.src)}"></video><div class="copy">${t.e?`<span class="eyebrow">${escH(t.e)}</span>`:''}${t.h?`<h1 class="disp">${escH(t.h)}</h1>`:''}${t.s?`<p>${escH(t.s)}</p>`:''}${t.b?`<a class="btn" ${att}>${escH(t.b)}</a>`:''}</div></div>`;
+}
 function imgSlide(x){
  const t=(x.txt&&(x.txt[lang]||x.txt.en))||{},lk=x.link||'shop';
  const att=lk==='club'?'href="#club" data-v="club"':/^p\d+$/.test(lk)?`href="#p${+lk.slice(1)+1}" data-open="${+lk.slice(1)}"`:'href="#shop" data-v="shop"';
@@ -646,30 +651,38 @@ function slides(d){
  const sub=`<img class="sub blend" src="${IMG.sub}" alt="WSC">`;
  let h='';
  heroList().forEach(x=>{
-  if(x.t==='video')h+=`<div class="s s1"><div class="hl"></div><video id="hv" class="vid" muted playsinline preload="auto" disablepictureinpicture src="${IMG.vid}"></video><div class="copy">${sub}<span class="eyebrow">${d.eyebrow}</span><h1 class="disp">${d.h1}</h1><p>${d.sub}</p><a class="btn" href="#drop">${d.cta}</a></div></div>`;
+  if(x.t==='video')h+=`<div class="s s1 vfirst"><div class="hl"></div><video id="hv" class="vid" muted playsinline preload="auto" disablepictureinpicture src="${IMG.vid}"></video><div class="copy">${sub}<span class="eyebrow">${d.eyebrow}</span><h1 class="disp">${d.h1}</h1><p>${d.sub}</p><a class="btn" href="#drop">${d.cta}</a></div></div>`;
   else if(x.t==='logo')h+=`<div class="s s2"><img src="${IMG.main}" alt="World Swimming Club logo"><p>${d.club}</p></div>`;
   else if(x.t==='product'){const i=x.p,p=P[i];h+=`<div class="s pd"><div class="copy">${sub}<h2 class="disp">${d.p[i].n}</h2><div class="pr" data-pr="${p.pr}">${won(p.pr)}</div><div class="row"><a class="btn" href="#p${i+1}" data-open="${i}">${d.shop}</a></div></div><div class="stage"><img src="${IMG[p.k+'B']}" alt="${d.p[i].n}"></div></div>`}
+  else if(x.t==='vid')h+=vidSlide(x);
   else h+=imgSlide(x);
  });
  $('slides').innerHTML=h;
 }
 const isVid=i=>{const e=document.querySelectorAll('#slides>.s')[i];return !!e&&e.classList.contains('s1')};
 function go(i){
- const N=document.querySelectorAll('#slides>.s').length||5;cur=(i+N)%N;
- document.querySelectorAll('#slides>.s').forEach((e,k)=>e.classList.toggle('on',k===cur));
+ const sl=document.querySelectorAll('#slides>.s'),N=sl.length||1;
+ cur=((i%N)+N)%N;
+ sl.forEach((e,k)=>e.classList.toggle('on',k===cur));
  document.querySelectorAll('.dots button').forEach((b,k)=>{b.removeAttribute('aria-current');void b.offsetWidth;if(k===cur)b.setAttribute('aria-current','true')});
-
  clearTimeout(timer);clearTimeout(vt);
- const v=$('hv'),s1=document.querySelector('.s1');
- if(s1)s1.classList.remove('play');
- if(isVid(cur)&&v){
+ sl.forEach(e=>e.classList.remove('play'));
+ const el=sl[cur],v=el?el.querySelector('video'):null,dv=$('dots'),my=cur;
+ if(v){
   try{v.pause();v.currentTime=0}catch(e){}
-  const dur=(v.duration&&isFinite(v.duration))?v.duration:9.3,total=(dur-1.3)+1.5;
-  $('dots').style.setProperty('--dur',total+'s');
-  vt=setTimeout(()=>{s1.classList.add('play');const pr=v.play();if(pr&&pr.catch)pr.catch(()=>{})},1500);
-  timer=setTimeout(()=>go(cur+1),total*1000);
-  v.onended=()=>{if(isVid(cur))go(cur+1)};
- }else{$('dots').style.setProperty('--dur',HS.dur+'s');timer=setTimeout(()=>go(cur+1),HS.dur*1000)}
+  const first=el.classList.contains('vfirst');
+  const armAt=sec=>{clearTimeout(timer);timer=setTimeout(()=>{if(cur===my)go(my+1)},sec*1000)};
+  const start=()=>{
+   const d=(v.duration&&isFinite(v.duration))?v.duration:HS.dur;
+   const total=first?Math.max(1,d-1.3+1.5):Math.max(1,d);
+   dv.style.setProperty('--dur',total+'s');armAt(total)};
+  vt=setTimeout(()=>{el.classList.add('play');const p=v.play();if(p&&p.catch)p.catch(()=>{})},first?1500:300);
+  v.onended=()=>{if(cur===my)go(my+1)};
+  if(v.readyState>=1)start();else v.addEventListener('loadedmetadata',()=>{if(cur===my)start()},{once:true});
+ }else{
+  dv.style.setProperty('--dur',HS.dur+'s');
+  timer=setTimeout(()=>go(cur+1),HS.dur*1000);
+ }
 }
 function paint(){setTimeout(()=>{if(dI!==null)renderDetail()},0);
  const d=T[lang];document.documentElement.lang=lang;
@@ -1043,7 +1056,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(!$('vm').hidden)
 
 /* ---------- admin ---------- */
 const AD={
-en:{title:"Admin",loginH:"Admin login",ghRepo:"GitHub repository (owner/repo)",ghBranch:"Branch",ghTok:"GitHub token (fine-grained, Contents: Read and write)",ghBad:"Check the repository, branch and token.",ghNet:"Could not reach GitHub. Check your connection and try again.",loginPg:"Admin login needs the 6-digit PIN and a GitHub token that can write to this site's repository. The token is kept only in this browser tab.",ghSaved:"Saved to GitHub. The site updates in 1–2 minutes (browser cache can delay it a little more).",ghE401:"The GitHub token is not valid.",ghE404:"Repository or branch not found, or the token has no write access.",ghE409:"The files on GitHub changed. Reload this page and try again.",ghEGen:"Saving to GitHub failed.",eRate:"You are publishing too often. Wait a moment and try again.",hsH:"Main screen slides",hsP:"Reorder, hide or add slides. Text is edited per language using the tabs.",hsVid:"Video slide",hsLogo:"Logo slide",hsProd:"Product slide",hsImg:"Image slide",hsAdd:"Add image slide",hsDur:"Seconds per slide",hsImgNote:"Image slides fill the screen, so a wide (16:9) photo works best. Up to 6.",fE:"Small label",fH:"Headline",fS2:"Description",fB:"Button text",hsC:"Caption",hsHead:"Heading",hsSub:"Subtext",hsBtn:"Button text (empty = no button)",hsLink:"Button goes to",hsLShop:"Products page",hsLClub:"The Club page",hsMin:"At least one slide must stay visible.",hsMax:"You can add up to 6 image slides.",txH:"Product text and price",txP:"Edit the name, price, short description, detail description and detail points for each language. The price is shared by all languages. Photos are replaced in the card above.",fN:"Name",fPr:"Price (KRW)",fD:"Short description (under the price)",fL:"Detail description (Details tab)",fS:"Detail points (one per line)",ePr:"Enter a price between 0 and 99,999,999.",pin:"6-digit admin PIN",pinBad:"The PIN is not correct.",pinLock:"Too many attempts. Try again in a minute.",loginP:"Admin access needs the 6-digit PIN and a Claude account that owns or can edit this page. The PIN alone is not enough.",cont:"Continue as site owner",chk:"Checking…",
+en:{title:"Admin",loginH:"Admin login",ghRepo:"GitHub repository (owner/repo)",ghBranch:"Branch",ghTok:"GitHub token (fine-grained, Contents: Read and write)",ghBad:"Check the repository, branch and token.",ghNet:"Could not reach GitHub. Check your connection and try again.",loginPg:"Admin login needs the 6-digit PIN and a GitHub token that can write to this site's repository. The token is kept only in this browser tab.",ghSaved:"Saved to GitHub. The site updates in 1–2 minutes (browser cache can delay it a little more).",ghE401:"The GitHub token is not valid.",ghE404:"Repository or branch not found, or the token has no write access.",ghE409:"The files on GitHub changed. Reload this page and try again.",ghEGen:"Saving to GitHub failed.",eRate:"You are publishing too often. Wait a moment and try again.",hsVidAdd:"Add video slide",hsVidNote:"Each video plays in full, then the next slide starts. 16:9 MP4 up to 20 MB works best.",hsMaxV:"You can add up to 4 video slides.",hsH:"Main screen slides",hsP:"Reorder, hide or add slides. Text is edited per language using the tabs.",hsVid:"Video slide",hsLogo:"Logo slide",hsProd:"Product slide",hsImg:"Image slide",hsAdd:"Add image slide",hsDur:"Seconds per slide",hsImgNote:"Image slides fill the screen, so a wide (16:9) photo works best. Up to 6.",fE:"Small label",fH:"Headline",fS2:"Description",fB:"Button text",hsC:"Caption",hsHead:"Heading",hsSub:"Subtext",hsBtn:"Button text (empty = no button)",hsLink:"Button goes to",hsLShop:"Products page",hsLClub:"The Club page",hsMin:"At least one slide must stay visible.",hsMax:"You can add up to 6 image slides.",txH:"Product text and price",txP:"Edit the name, price, short description, detail description and detail points for each language. The price is shared by all languages. Photos are replaced in the card above.",fN:"Name",fPr:"Price (KRW)",fD:"Short description (under the price)",fL:"Detail description (Details tab)",fS:"Detail points (one per line)",ePr:"Enter a price between 0 and 99,999,999.",pin:"6-digit admin PIN",pinBad:"The PIN is not correct.",pinLock:"Too many attempts. Try again in a minute.",loginP:"Admin access needs the 6-digit PIN and a Claude account that owns or can edit this page. The PIN alone is not enough.",cont:"Continue as site owner",chk:"Checking…",
  no:"This account does not have edit rights for this page.",none:"Admin is only available when this page is opened inside Claude and you are signed in as the owner or an editor.",
  ok:"Signed in as admin. Changes you make here appear on the page right away. Press Save & publish to make them live for everyone.",exit:"Exit admin",editor:"Editor",
  vidH:"Main video",vidP:"Plays on the first main-screen slide. MP4, up to 20 MB.",rep:"Replace",phH:"Product photos",phP:"Back is the large photo. Front or detail appears in the description.",back:"Back",front:"Front / detail",
@@ -1053,7 +1066,7 @@ en:{title:"Admin",loginH:"Admin login",ghRepo:"GitHub repository (owner/repo)",g
  save:"Save & publish",discard:"Discard changes",dirty:"Unsaved changes",saving:"Publishing…",saved:"Published. Reloading…",upping:"Uploading…",
  eBig:"File is larger than 20 MB.",eType:"Unsupported file type.",eUp:"Upload failed. Check your edit rights and try again.",eNo:"You do not have permission to edit this page.",
  eConf:"A newer version was published. Reloading…",eLarge:"The page is too large to publish. MP3 and WAV tracks are stored inside the page, so delete some or add music as M4A/MP4 files instead.",eGen:"Could not publish. Try again.",up:"Up",down:"Down",del:"Delete",show:"Show",eMp3:"MP3/WAV files are stored inside the page and must be 8 MB or smaller. Use M4A or MP4 for up to 20 MB."},
-ko:{title:"관리자",loginH:"관리자 로그인",ghRepo:"GitHub 저장소 (owner/repo)",ghBranch:"브랜치",ghTok:"GitHub 토큰 (세분화된 토큰, Contents: 읽기 및 쓰기)",ghBad:"저장소, 브랜치, 토큰을 확인해 주세요.",ghNet:"GitHub에 연결하지 못했어요. 인터넷 연결을 확인하고 다시 시도해 주세요.",loginPg:"관리자 로그인에는 PIN 6자리와, 이 사이트 저장소에 쓸 수 있는 GitHub 토큰이 필요해요. 토큰은 이 브라우저 탭에만 저장돼요.",ghSaved:"GitHub에 저장했어요. 사이트에 반영되기까지 1~2분 걸려요(브라우저 캐시 때문에 조금 더 걸릴 수 있어요).",ghE401:"GitHub 토큰이 올바르지 않아요.",ghE404:"저장소나 브랜치를 찾을 수 없거나, 토큰에 쓰기 권한이 없어요.",ghE409:"GitHub의 파일이 바뀌었어요. 페이지를 새로 고치고 다시 시도해 주세요.",ghEGen:"GitHub에 저장하지 못했어요.",eRate:"게시를 너무 자주 하고 있어요. 잠시 뒤에 다시 시도해 주세요.",hsH:"메인 화면 슬라이드",hsP:"슬라이드 순서를 바꾸거나 숨기고, 이미지 슬라이드를 추가할 수 있어요. 문구는 위 언어 탭별로 수정해요.",hsVid:"영상 슬라이드",hsLogo:"로고 슬라이드",hsProd:"제품 슬라이드",hsImg:"이미지 슬라이드",hsAdd:"이미지 슬라이드 추가",hsDur:"슬라이드당 시간(초)",hsImgNote:"이미지 슬라이드는 화면을 꽉 채우므로 가로형(16:9) 사진이 가장 잘 어울려요. 최대 6개.",fE:"작은 라벨",fH:"큰 제목",fS2:"설명",fB:"버튼 글자",hsC:"캡션",hsHead:"제목",hsSub:"설명 문구",hsBtn:"버튼 글자 (비우면 버튼 없음)",hsLink:"버튼 이동 위치",hsLShop:"제품 목록 페이지",hsLClub:"더 클럽 페이지",hsMin:"슬라이드는 최소 1개는 보여야 해요.",hsMax:"이미지 슬라이드는 최대 6개까지 추가할 수 있어요.",txH:"제품 문구와 가격",txP:"언어별로 제품 이름, 짧은 설명, 상세 설명, 상세 항목을 수정할 수 있어요. 가격은 모든 언어에 공통이고, 사진은 위 카드에서 교체해요.",fN:"이름",fPr:"가격(원)",fD:"짧은 설명 (가격 아래)",fL:"상세 설명 (Details 탭)",fS:"상세 항목 (한 줄에 하나)",ePr:"0원 이상 99,999,999원 이하로 입력해 주세요.",pin:"관리자 PIN 6자리",pinBad:"PIN이 맞지 않아요.",pinLock:"시도 횟수를 넘었어요. 1분 뒤에 다시 시도해 주세요.",loginP:"관리자 로그인에는 PIN 6자리와, 이 페이지의 소유자 또는 편집자 Claude 계정이 모두 필요해요. PIN만으로는 들어올 수 없어요.",cont:"사이트 소유자로 계속",chk:"확인 중…",
+ko:{title:"관리자",loginH:"관리자 로그인",ghRepo:"GitHub 저장소 (owner/repo)",ghBranch:"브랜치",ghTok:"GitHub 토큰 (세분화된 토큰, Contents: 읽기 및 쓰기)",ghBad:"저장소, 브랜치, 토큰을 확인해 주세요.",ghNet:"GitHub에 연결하지 못했어요. 인터넷 연결을 확인하고 다시 시도해 주세요.",loginPg:"관리자 로그인에는 PIN 6자리와, 이 사이트 저장소에 쓸 수 있는 GitHub 토큰이 필요해요. 토큰은 이 브라우저 탭에만 저장돼요.",ghSaved:"GitHub에 저장했어요. 사이트에 반영되기까지 1~2분 걸려요(브라우저 캐시 때문에 조금 더 걸릴 수 있어요).",ghE401:"GitHub 토큰이 올바르지 않아요.",ghE404:"저장소나 브랜치를 찾을 수 없거나, 토큰에 쓰기 권한이 없어요.",ghE409:"GitHub의 파일이 바뀌었어요. 페이지를 새로 고치고 다시 시도해 주세요.",ghEGen:"GitHub에 저장하지 못했어요.",eRate:"게시를 너무 자주 하고 있어요. 잠시 뒤에 다시 시도해 주세요.",hsVidAdd:"영상 슬라이드 추가",hsVidNote:"영상은 끝까지 재생된 뒤 다음 슬라이드로 넘어가요. 가로형(16:9) MP4, 20MB 이하가 가장 좋아요.",hsMaxV:"영상 슬라이드는 최대 4개까지 추가할 수 있어요.",hsH:"메인 화면 슬라이드",hsP:"슬라이드 순서를 바꾸거나 숨기고, 이미지 슬라이드를 추가할 수 있어요. 문구는 위 언어 탭별로 수정해요.",hsVid:"영상 슬라이드",hsLogo:"로고 슬라이드",hsProd:"제품 슬라이드",hsImg:"이미지 슬라이드",hsAdd:"이미지 슬라이드 추가",hsDur:"슬라이드당 시간(초)",hsImgNote:"이미지 슬라이드는 화면을 꽉 채우므로 가로형(16:9) 사진이 가장 잘 어울려요. 최대 6개.",fE:"작은 라벨",fH:"큰 제목",fS2:"설명",fB:"버튼 글자",hsC:"캡션",hsHead:"제목",hsSub:"설명 문구",hsBtn:"버튼 글자 (비우면 버튼 없음)",hsLink:"버튼 이동 위치",hsLShop:"제품 목록 페이지",hsLClub:"더 클럽 페이지",hsMin:"슬라이드는 최소 1개는 보여야 해요.",hsMax:"이미지 슬라이드는 최대 6개까지 추가할 수 있어요.",txH:"제품 문구와 가격",txP:"언어별로 제품 이름, 짧은 설명, 상세 설명, 상세 항목을 수정할 수 있어요. 가격은 모든 언어에 공통이고, 사진은 위 카드에서 교체해요.",fN:"이름",fPr:"가격(원)",fD:"짧은 설명 (가격 아래)",fL:"상세 설명 (Details 탭)",fS:"상세 항목 (한 줄에 하나)",ePr:"0원 이상 99,999,999원 이하로 입력해 주세요.",pin:"관리자 PIN 6자리",pinBad:"PIN이 맞지 않아요.",pinLock:"시도 횟수를 넘었어요. 1분 뒤에 다시 시도해 주세요.",loginP:"관리자 로그인에는 PIN 6자리와, 이 페이지의 소유자 또는 편집자 Claude 계정이 모두 필요해요. PIN만으로는 들어올 수 없어요.",cont:"사이트 소유자로 계속",chk:"확인 중…",
  no:"이 계정에는 이 페이지의 편집 권한이 없어요.",none:"관리자 기능은 이 페이지를 Claude 안에서 열고, 소유자나 편집자 계정으로 로그인했을 때만 쓸 수 있어요.",
  ok:"관리자로 로그인했어요. 여기서 바꾸는 내용은 바로 화면에 보이고, 「저장하고 게시」를 눌러야 모든 방문자에게 적용돼요.",exit:"관리자 나가기",editor:"편집기",
  vidH:"메인 영상",vidP:"메인 화면 첫 번째 슬라이드에서 재생돼요. MP4, 20MB 이하.",rep:"교체",phH:"제품 사진",phP:"뒷면이 큰 대표 사진이고, 앞면·디테일 사진은 상세 설명에 나와요.",back:"뒷면",front:"앞면 / 디테일",
@@ -1194,10 +1207,10 @@ function renderAdmin(){
   <div class="photo"><img src="${draft.img[p.k+'B']}" alt=""><span>${a.back}</span><label class="ubtn">${a.rep}<input type="file" accept="image/*" data-up="${p.k}B" hidden></label></div>
   <div class="photo"><img src="${draft.img[FIG[i][0]]}" alt=""><span>${a.front}</span><label class="ubtn">${a.rep}<input type="file" accept="image/*" data-up="${FIG[i][0]}" hidden></label></div></div>`).join('')}</div>
  <div class="acard"><h4>${a.hsH}</h4><p>${a.hsP}</p>
-  ${HS.list.map((x,i)=>`<div class="arow"><span class="grow">${x.t==='video'?a.hsVid:x.t==='logo'?a.hsLogo:x.t==='product'?a.hsProd+': '+PNAMES[x.p]:a.hsImg+' '+(HS.list.slice(0,i+1).filter(y=>y.t==='image').length)}</span>
+  ${HS.list.map((x,i)=>`<div class="arow"><span class="grow">${x.t==='video'?a.hsVid:x.t==='logo'?a.hsLogo:x.t==='product'?a.hsProd+': '+PNAMES[x.p]:x.t==='vid'?a.hsVid+' '+(HS.list.slice(0,i+1).filter(y=>y.t==='vid').length):a.hsImg+' '+(HS.list.slice(0,i+1).filter(y=>y.t==='image').length)}</span>
    <button data-hm="-1" data-hi="${i}" ${i===0?'disabled':''}>${a.up}</button><button data-hm="1" data-hi="${i}" ${i===HS.list.length-1?'disabled':''}>${a.down}</button>
-   <label style="font-size:13px"><input type="checkbox" data-hon="${i}" ${(x.on===0||x.on===false)?'':'checked'}> ${a.show}</label>${x.t==='image'?`<button data-hd="${i}">${a.del}</button>`:''}</div>`).join('')}
-  <div class="arow"><label class="ubtn">${a.hsAdd}<input type="file" accept="image/*" data-up="slideadd" hidden></label>
+   <label style="font-size:13px"><input type="checkbox" data-hon="${i}" ${(x.on===0||x.on===false)?'':'checked'}> ${a.show}</label>${(x.t==='image'||x.t==='vid')?`<button data-hd="${i}">${a.del}</button>`:''}</div>`).join('')}
+  <div class="arow"><label class="ubtn">${a.hsAdd}<input type="file" accept="image/*" data-up="slideadd" hidden></label> <label class="ubtn">${a.hsVidAdd}<input type="file" accept="video/*" data-up="slidevid" hidden></label>
    <label style="font-size:13px;display:flex;gap:8px;align-items:center">${a.hsDur}<input type="number" min="3" max="20" step="1" data-hdur value="${HS.dur}" style="width:70px;background:#000;border:1px solid var(--ash);color:var(--bone);padding:6px"></label></div>
   <p style="margin:6px 0 0">${a.hsImgNote}</p>
   <div class="tabs2" role="tablist">${[['en','EN'],['ja','日本語'],['ko','한국어']].map(x=>`<button role="tab" data-al="${x[0]}" aria-selected="${(adLang||lang)===x[0]}">${x[1]}</button>`).join('')}</div>
@@ -1207,9 +1220,9 @@ function renderAdmin(){
    <label>${a.fS2}<textarea rows="3" data-hk="sub" maxlength="300">${escH(r.sub)}</textarea></label>
    <label>${a.fB}<input data-hk="cta" maxlength="100" value="${escH(r.cta)}"></label></div>
    <div class="ptx"><b>${a.hsLogo}</b><label>${a.hsC}<input data-hk="club" maxlength="100" value="${escH(r.club)}"></label></div>`})()}
-  ${HS.list.map(x=>{if(x.t!=='image')return '';const al=adLang||lang,t=(x.txt&&x.txt[al])||{};return `<div class="ptx"><b>${a.hsImg}</b>
-   <div class="photo"><img src="${x.img}" alt=""><label class="ubtn">${a.rep}<input type="file" accept="image/*" data-up="slide:${x.id}" hidden></label></div>
-   <label>${a.hsHead}<input data-sid="${x.id}" data-sk="h" maxlength="120" value="${escH(t.h||'')}"></label>
+  ${HS.list.map(x=>{if(x.t!=='image'&&x.t!=='vid')return '';const al=adLang||lang,t=(x.txt&&x.txt[al])||{};return `<div class="ptx"><b>${x.t==='vid'?a.hsVid:a.hsImg}</b>
+   <div class="photo">${x.t==='vid'?`<video src="${x.src}" muted style="width:200px;height:112px;object-fit:cover;background:#000"></video>`:`<img src="${x.img}" alt="">`}<label class="ubtn">${a.rep}<input type="file" accept="${x.t==='vid'?'video/*':'image/*'}" data-up="${x.t==='vid'?'svid:':'slide:'}${x.id}" hidden></label></div>
+   ${x.t==='vid'?`<label>${a.fE}<input data-sid="${x.id}" data-sk="e" maxlength="100" value="${escH(t.e||'')}"></label>`:''}<label>${a.hsHead}<input data-sid="${x.id}" data-sk="h" maxlength="120" value="${escH(t.h||'')}"></label>
    <label>${a.hsSub}<input data-sid="${x.id}" data-sk="s" maxlength="120" value="${escH(t.s||'')}"></label>
    <label>${a.hsBtn}<input data-sid="${x.id}" data-sk="b" maxlength="120" value="${escH(t.b||'')}"></label>
    <label>${a.hsLink}<select data-sid="${x.id}" data-sk="link"><option value="shop" ${x.link==='shop'||!x.link?'selected':''}>${a.hsLShop}</option><option value="club" ${x.link==='club'?'selected':''}>${a.hsLClub}</option>${P.map((p,i)=>`<option value="p${i}" ${x.link==='p'+i?'selected':''}>${PNAMES[i]}</option>`).join('')}</select></label></div>`}).join('')}
@@ -1250,6 +1263,14 @@ function upErr(e){const a=AT(),c=e&&e.code;return c==='big'?a.eBig:c==='type'?a.
 async function handleUpload(inp){
  const key=inp.dataset.up,f=inp.files&&inp.files[0],a=AT();inp.value='';if(!f)return;
  try{
+  if(key==='slidevid'||key.startsWith('svid:')){
+   if(!/^video\//.test(f.type))throw{code:'type'};if(f.size>20*1048576)throw{code:'big'};
+   if(key==='slidevid'&&HS.list.filter(x=>x.t==='vid').length>=4){toast(a.hsMaxV);setMsg('');return}
+   setMsg(a.upping);const url=await upAsset(f);
+   if(key==='slidevid')HS.list.push({t:'vid',id:'v'+Date.now().toString(36),on:1,src:url,link:'shop',txt:{en:{e:'',h:'',s:'',b:'Shop now'},ja:{e:'',h:'',s:'',b:'ショップへ'},ko:{e:'',h:'',s:'',b:'쇼핑하기'}}});
+   else{const x=HS.list.find(y=>y.id===key.slice(5));if(x)x.src=url}
+   markDirty();setMsg('');paint();renderAdmin();return;
+  }
   if(key==='vid'||key==='clip'){
    if(!/^video\//.test(f.type))throw{code:'type'};if(f.size>20*1048576)throw{code:'big'};
    setMsg(a.upping);const url=await upAsset(f);
