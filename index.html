@@ -371,6 +371,8 @@ body:not([data-cur="KRW"]) .cnote{display:block}
 #hero[data-hx="right"] .im .copy{text-align:right;margin-left:auto}
 #hero[data-hx="right"] .im .copy>*{margin-left:auto}
 .ptx select{background:#000;color:var(--bone);border:1px solid var(--ash);padding:9px 11px;font:inherit}
+.inum{width:90px;background:#000;color:var(--bone);border:1px solid var(--ash);padding:6px;font:inherit}
+.mute{color:var(--ash);font-size:13px}
 </style>
 </head>
 <body>
@@ -383,7 +385,7 @@ body:not([data-cur="KRW"]) .cnote{display:block}
     <div class="lang" role="group" aria-label="Language">
       <button data-l="en" aria-pressed="true">EN</button>
       <button data-l="ja" aria-pressed="false">日本語</button>
-      <button data-l="ko" aria-pressed="false">한국어</button>
+      
     </div>
     <div class="cur"><select id="cs" aria-label="Currency"><option value="KRW">₩ KRW</option><option value="USD">$ USD</option><option value="JPY">¥ JPY</option></select><button class="gear" id="rg" aria-label="Exchange rates" aria-expanded="false">⚙</button><button class="gear" id="mbtn" aria-label="Music" aria-expanded="false">♪</button></div>
     <button class="bag" id="bag"><span data-i="bag"></span> <span id="cnt">0</span></button>
@@ -620,13 +622,113 @@ function normHS(x){
 function syncHero(){['en','ja','ko'].forEach(l=>HKEYS.forEach(k=>{T[l][k]=escH(HTR[l][k]||'')}))}
 function loadHero(c){HTR=JSON.parse(JSON.stringify(HT0));if(c.ht)['en','ja','ko'].forEach(l=>{if(c.ht[l])HKEYS.forEach(k=>{if(typeof c.ht[l][k]==='string')HTR[l][k]=c.ht[l][k]})});HS=normHS(c.hs);syncHero()}
 loadHero(CFG);
+/* ---------- inventory, sale status, manual orders ---------- */
+const INVSZ=['S','M','L','XL'];
+const IV={
+en:{soldOut:"Sold out",invH:"Inventory & orders",invP:"Set stock, size status and sale % for each color and size. Stock at 0 is sold out automatically. Changes go live after Save & publish.",colorsL:"Colors (comma separated)",size:"Size",status:"Status",sale:"Sale %",stock:"Stock",color:"Color",on:"On sale",sold:"Sold out",auto:"Sold out (stock 0)",ok:"In stock",ordH:"Manual order entry",ordP:"Record an order received outside this site (phone, DM, store). Stock goes down automatically.",product:"Product",qty:"Qty",memo:"Memo",ordAdd:"Record order",ordBad:"Check the color name, size, quantity and stock.",ordLog:"Order log",csvO:"Download orders (CSV)",csvS:"Download stock (CSV)",date:"Date",total:"Total",none:"No orders recorded yet.",note:"Orders placed on this site stay in each visitor's own browser, so they do not appear here. For now, record them with manual entry."},
+ja:{soldOut:"SOLD OUT",invH:"在庫・注文管理",invP:"色とサイズごとに在庫数、サイズの状態、セール率を設定します。在庫が0になると自動で SOLD OUT になります。変更は「保存して公開」の後に反映されます。",colorsL:"カラー（カンマ区切り）",size:"サイズ",status:"状態",sale:"セール率(%)",stock:"在庫",color:"カラー",on:"販売中",sold:"SOLD OUT",auto:"SOLD OUT（在庫0）",ok:"在庫あり",ordH:"注文の手入力",ordP:"電話・DM・店頭など、サイトの外で受けた注文を記録します。在庫は自動で減ります。",product:"商品",qty:"数量",memo:"メモ",ordAdd:"注文を記録",ordBad:"カラー名、サイズ、数量、在庫を確認してください。",ordLog:"注文履歴",csvO:"注文を保存（CSV）",csvS:"在庫を保存（CSV）",date:"日時",total:"合計",none:"まだ注文はありません。",note:"サイトで行われた注文は各訪問者のブラウザにだけ残るため、ここには表示されません。今は手入力で記録してください。"}
+};
+let INV={},ORD=[],selc={};
+const invDefColors=i=>P[i].k==='jkt'?['Charcoal']:['Black'];
+function invEnsure(i){const s=INV[i];s.colors.forEach(c=>INVSZ.forEach(z=>{const k=c+'|'+z;if(typeof s.stock[k]!=='number')s.stock[k]=0}))}
+function invLoad(c){
+ INV={};const src=(c&&c.inv)||{};
+ P.forEach((p,i)=>{
+  const s=src[i]||{};
+  const colors=(Array.isArray(s.colors)&&s.colors.length?s.colors:invDefColors(i)).map(x=>String(x).replace(/\|/g,'').slice(0,30)).filter(Boolean).slice(0,6);
+  INV[i]={colors:colors,stock:{},size:{}};
+  const st=s.stock||{};
+  colors.forEach(col=>INVSZ.forEach(z=>{const k=col+'|'+z;INV[i].stock[k]=Math.max(0,Math.floor(Number(st[k])||0))}));
+  INVSZ.forEach(z=>{const m=(s.size||{})[z]||{};INV[i].size[z]={status:m.status==='sold'?'sold':'on',sale:Math.min(90,Math.max(0,Math.floor(Number(m.sale)||0)))}});
+ });
+ ORD=Array.isArray(c&&c.orders)?c.orders.slice(-1000):[];
+}
+const vstock=(i,col,z)=>INV[i].stock[col+'|'+z]||0;
+const vsold=(i,col,z)=>vstock(i,col,z)<=0||INV[i].size[z].status==='sold';
+const unitPr=(i,z)=>Math.round(P[i].pr*(1-INV[i].size[z].sale/100));
+const effPr=i=>unitPr(i,sel[i]||'M');
+function szBtn(i,z){
+ const col=selc[i]||INV[i].colors[0],off=vsold(i,col,z),sale=INV[i].size[z].sale;
+ return `<button data-p="${i}" data-s="${z}" aria-pressed="${(sel[i]||'M')===z}"${off?' disabled':''} title="${off?'SOLD OUT':(sale?'-'+sale+'%':'')}" style="${off?'opacity:.35;text-decoration:line-through':''}">${z}${sale&&!off?`<sup style="font-size:9px;color:var(--ember)"> -${sale}%</sup>`:''}</button>`;
+}
+function colorRow(i){
+ const cs=INV[i].colors;if(cs.length<2)return '';
+ const cur=selc[i]||cs[0];
+ return `<div class="sizes" role="group" aria-label="Color" style="margin-bottom:10px">${cs.map(c=>`<button data-p="${i}" data-c="${escH(c)}" aria-pressed="${cur===c}" style="width:auto;padding:0 12px">${escH(c)}</button>`).join('')}</div>`;
+}
+function nowStamp(){const d=new Date(),p=n=>String(n).padStart(2,'0');return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+' '+p(d.getHours())+':'+p(d.getMinutes())}
+function invOrderAdd(){
+ const v=IV[lang]||IV.en,p=+$('oP').value,col=$('oC').value.trim(),z=$('oS').value,q=Math.floor(Number($('oQ').value)),memo=$('oM').value.trim().slice(0,120);
+ if(!INV[p]||!INV[p].colors.includes(col)||!INVSZ.includes(z)||!(q>=1&&q<=99)||vstock(p,col,z)<q){setMsg(v.ordBad);return}
+ INV[p].stock[col+'|'+z]=vstock(p,col,z)-q;
+ ORD.push({date:nowStamp(),p:p,name:PNAMES[p],color:col,size:z,qty:q,price:unitPr(p,z),total:unitPr(p,z)*q,memo:memo});
+ markDirty();paint();renderAdmin();
+}
+function csvDL(name,rows){
+ const body='\uFEFF'+rows.map(r=>r.map(x=>'"'+String(x==null?'':x).replace(/"/g,'""')+'"').join(',')).join('\r\n');
+ const u=URL.createObjectURL(new Blob([body],{type:'text/csv;charset=utf-8'}));
+ const a=document.createElement('a');a.href=u;a.download=name;document.body.appendChild(a);a.click();
+ setTimeout(()=>{URL.revokeObjectURL(u);a.remove()},800);
+}
+function csvStock(){
+ const rows=[['Product','Color','Size','Stock','Status','Sale %','Unit price (KRW)']];
+ P.forEach((p,i)=>INV[i].colors.forEach(col=>INVSZ.forEach(z=>rows.push([PNAMES[i],col,z,vstock(i,col,z),vsold(i,col,z)?'SOLD OUT':'ON SALE',INV[i].size[z].sale,unitPr(i,z)]))));
+ return rows;
+}
+function csvOrders(){
+ const rows=[['Date','Product','Color','Size','Qty','Unit price (KRW)','Total (KRW)','Memo']];
+ ORD.forEach(o=>rows.push([o.date,o.name,o.color,o.size,o.qty,o.price,o.total,o.memo]));
+ return rows;
+}
+function invCard(){
+ const v=IV[lang]||IV.en;
+ const products=P.map((p,i)=>{
+  const sizeRows=INVSZ.map(z=>`<tr><td>${z}</td><td><select data-ist="${i}|${z}"><option value="on"${INV[i].size[z].status==='on'?' selected':''}>${v.on}</option><option value="sold"${INV[i].size[z].status==='sold'?' selected':''}>${v.sold}</option></select></td><td><input type="number" min="0" max="90" step="1" data-isale="${i}|${z}" value="${INV[i].size[z].sale}" class="inum"></td></tr>`).join('');
+  const stockRows=INV[i].colors.map(col=>INVSZ.map(z=>`<tr><td>${escH(col)}</td><td>${z}</td><td><input type="number" min="0" step="1" data-istk="${i}|${escH(col)}|${z}" value="${vstock(i,col,z)}" class="inum"></td><td>${vsold(i,col,z)?`<b style="color:var(--ember)">${vstock(i,col,z)<=0?v.auto:v.sold}</b>`:v.ok}</td></tr>`).join('')).join('');
+  return `<div class="ptx"><b>${PNAMES[i]}</b>
+   <label>${v.colorsL}<input data-icol="${i}" value="${escH(INV[i].colors.join(', '))}"></label>
+   <table class="ct"><tr><th>${v.size}</th><th>${v.status}</th><th>${v.sale}</th></tr>${sizeRows}</table>
+   <table class="ct"><tr><th>${v.color}</th><th>${v.size}</th><th>${v.stock}</th><th>${v.status}</th></tr>${stockRows}</table></div>`;
+ }).join('');
+ const opts=P.map((p,i)=>`<option value="${i}">${PNAMES[i]}</option>`).join('');
+ const log=ORD.length
+  ?`<table class="ct"><tr><th>${v.date}</th><th>${v.product}</th><th>${v.color}</th><th>${v.size}</th><th>${v.qty}</th><th>${v.total}</th><th>${v.memo}</th></tr>${ORD.slice().reverse().map(o=>`<tr><td>${escH(o.date)}</td><td>${escH(o.name)}</td><td>${escH(o.color)}</td><td>${o.size}</td><td>${o.qty}</td><td>₩${o.total.toLocaleString('en-US')}</td><td>${escH(o.memo)}</td></tr>`).join('')}</table>`
+  :`<p>${v.none}</p>`;
+ return `<div class="acard"><h4>${v.invH}</h4><p>${v.invP}</p>${products}</div>
+ <div class="acard"><h4>${v.ordH}</h4><p>${v.ordP}</p>
+  <div class="pos"><label>${v.product}<select id="oP">${opts}</select></label>
+  <label>${v.color}<input id="oC" value="${escH(INV[0].colors[0]||'')}"></label>
+  <label>${v.size}<select id="oS">${INVSZ.map(z=>`<option>${z}</option>`).join('')}</select></label>
+  <label>${v.qty}<input id="oQ" type="number" min="1" max="99" value="1" class="inum"></label>
+  <label>${v.memo}<input id="oM" maxlength="120"></label></div>
+  <div class="asave"><button class="btn" data-ordadd>${v.ordAdd}</button></div></div>
+ <div class="acard"><h4>${v.ordLog}</h4><p class="mute">${v.note}</p>${log}
+  <div class="asave"><button class="ubtn" data-csv="orders">${v.csvO}</button><button class="ubtn" data-csv="stock">${v.csvS}</button></div></div>`;
+}
+function invChange(t){
+ if(t.dataset.icol!==undefined){const i=+t.dataset.icol;const cs=t.value.split(',').map(x=>x.replace(/\|/g,'').trim().slice(0,30)).filter(Boolean).slice(0,6);INV[i].colors=cs.length?cs:invDefColors(i);invEnsure(i)}
+ else if(t.dataset.istk!==undefined){const[i,col,z]=t.dataset.istk.split('|');INV[+i].stock[col+'|'+z]=Math.max(0,Math.floor(Number(t.value))||0)}
+ else if(t.dataset.ist!==undefined){const[i,z]=t.dataset.ist.split('|');INV[+i].size[z].status=t.value==='sold'?'sold':'on'}
+ else if(t.dataset.isale!==undefined){const[i,z]=t.dataset.isale.split('|');INV[+i].size[z].sale=Math.min(90,Math.max(0,Math.floor(Number(t.value))||0))}
+ else return false;
+ markDirty();paint();renderAdmin();return true;
+}
+function invClick(e){
+ const b=e.target.closest('[data-ordadd],[data-csv]');if(!b)return false;
+ if(b.dataset.ordadd!==undefined)invOrderAdd();
+ else if(b.dataset.csv==='stock')csvDL('wsc-stock.csv',csvStock());
+ else csvDL('wsc-orders.csv',csvOrders());
+ return true;
+}
+
+invLoad(CFG);
 const heroList=()=>{const l=HS.list.filter(x=>x.on!==0&&x.on!==false);return l.length?l:HS.list.slice(0,1)};
 let lang='en',n=0,tt,cur=0,timer,vt,user=null,lt='in',curView='home',lastView='home';
 const vid={home:'top',shop:'v-shop',club:'v-club',my:'v-my',login:'v-login',cart:'v-cart',admin:'v-admin'};
 let musicReady=false,adminOK=false,draft=null,cart=[],orders=[],pendingTo=null,ship={name:'',phone:'',addr:'',memo:''};
 try{cart=JSON.parse(localStorage.getItem('wsc-cart')||'[]');orders=JSON.parse(localStorage.getItem('wsc-orders')||'[]');if(!Array.isArray(cart))cart=[];if(!Array.isArray(orders))orders=[]}catch(e){cart=[];orders=[]}
 try{user=JSON.parse(localStorage.getItem('wsc-user')||'null')}catch(e){}const sel={};
-try{const s=localStorage.getItem('wsc-lang');if(s&&T[s])lang=s}catch(e){}
+try{const s=localStorage.getItem('wsc-lang');if(s&&T[s]&&s!=='ko')lang=s}catch(e){}
 const DEF={usd:1480,jpy:930};
 let cc='KRW',rt={...DEF};
 try{const c=localStorage.getItem('wsc-cur');if(c==='USD'||c==='JPY'||c==='KRW')cc=c;const r=JSON.parse(localStorage.getItem('wsc-rt')||'null');if(r&&r.usd>0&&r.jpy>0)rt=r}catch(e){}
@@ -694,14 +796,15 @@ function paint(){setTimeout(()=>{if(dI!==null)renderDetail()},0);
  $('dots').innerHTML=Array.from({length:heroList().length},(_,i)=>i).map(i=>`<button data-g="${i}" aria-label="Slide ${i+1}"></button>`).join('');
  go(cur);
  $('list').innerHTML=P.map((p,i)=>`<article class="prod"><a class="frame" href="#p${i+1}" data-open="${i}" aria-label="${d.p[i].n}"><img src="${IMG[p.k+'B']}" alt="${d.p[i].n}"></a>
- <div class="info"><h3 class="disp"><a href="#p${i+1}" data-open="${i}">${d.p[i].n}</a></h3><div class="price" data-pr="${p.pr}">${won(p.pr)}</div><p>${d.p[i].d}</p>
+ <div class="info"><h3 class="disp"><a href="#p${i+1}" data-open="${i}">${d.p[i].n}</a></h3><div class="price" data-pr="${effPr(i)}">${won(effPr(i))}</div><p>${d.p[i].d}</p>
  <ul>${d.p[i].s.map(x=>`<li>${x}</li>`).join('')}</ul>
- <div class="sizes" role="group" aria-label="${d.size}">${['S','M','L','XL'].map(s=>`<button data-p="${i}" data-s="${s}" aria-pressed="${(sel[i]||'M')===s}">${s}</button>`).join('')}</div>
+ ${colorRow(i)}<div class="sizes" role="group" aria-label="${d.size}">${['S','M','L','XL'].map(s=>`${szBtn(i,s)}`).join('')}</div>
  <button class="btn" data-add="${i}">${d.add}</button><a class="lnk" href="#p${i+1}" data-open="${i}">${d.view}</a></div></article>`).join('');
  $('shopList').innerHTML=$('list').innerHTML;renderPages();
 }
 $('dots').addEventListener('click',e=>{const b=e.target.closest('[data-g]');if(b)go(+b.dataset.g)});
 const bagClick=e=>{
+ const cc=e.target.closest('[data-c]');if(cc){selc[+cc.dataset.p]=cc.dataset.c;paint();if(dI!==null)renderDetail();return}
  const s=e.target.closest('[data-s]');
  if(s){sel[s.dataset.p]=s.dataset.s;s.parentNode.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',b===s));return}
  const ad=e.target.closest('[data-add]');if(ad)addToCart(+ad.dataset.add);
@@ -727,8 +830,8 @@ function renderDetail(){
  else body=`<h4>${d.cH}</h4><p>${d.cP}</p><table class="ct">${[[d.coName,'World Swimming Club'],[d.rep,d.tba],[d.reg,d.tba],[d.addr,d.tba],[d.mail,'support@worldswimmingclub.example']].map(r=>`<tr><th>${r[0]}</th><td>${r[1]}</td></tr>`).join('')}</table>`;
  $('detail').innerHTML=`<button class="back" data-back>← ${d.back}</button>
  <div class="dgrid"><div class="stage"><img src="${IMG[p.k+'B']}" alt="${t.n}"><span class="cap">${d.figBack}</span></div>
- <div class="di"><h1 class="disp">${t.n}</h1><div class="price" data-pr="${p.pr}">${won(p.pr)}</div><div class="cnote">${d.curNote}</div><div class="sum"><span class="st">${stars(Math.round(avg))}</span> ${avg.toFixed(1)} · ${d.revN(rv.length)}</div><p>${t.d}</p>
- <div class="sizes" role="group" aria-label="${d.size}">${['S','M','L','XL'].map(s=>`<button data-p="${i}" data-s="${s}" aria-pressed="${(sel[i]||'M')===s}">${s}</button>`).join('')}</div>
+ <div class="di"><h1 class="disp">${t.n}</h1><div class="price" data-pr="${effPr(i)}">${won(effPr(i))}</div><div class="cnote">${d.curNote}</div><div class="sum"><span class="st">${stars(Math.round(avg))}</span> ${avg.toFixed(1)} · ${d.revN(rv.length)}</div><p>${t.d}</p>
+ ${colorRow(i)}<div class="sizes" role="group" aria-label="${d.size}">${['S','M','L','XL'].map(s=>`${szBtn(i,s)}`).join('')}</div>
  <button class="btn" data-add="${i}">${d.add}</button></div></div>
  <div class="tabs" role="tablist">${[['d',d.tabD],['r',`${d.tabR} (${rv.length})`],['c',d.tabC]].map(x=>`<button role="tab" data-t="${x[0]}" aria-selected="${dTab===x[0]}">${x[1]}</button>`).join('')}</div>
  <div class="panel" role="tabpanel">${body}</div>`;
@@ -850,7 +953,7 @@ function route(){
 }
 function renderGate(anim){
  const el=$('gate'),d=T[lang];el.className=anim?'':'static';
- el.innerHTML=`<div class="glang">${[['en','EN'],['ja','日本語'],['ko','한국어']].map(x=>`<button data-gl="${x[0]}" aria-pressed="${lang===x[0]}">${x[1]}</button>`).join('')}</div>
+ el.innerHTML=`<div class="glang">${[['en','EN'],['ja','日本語']].map(x=>`<button data-gl="${x[0]}" aria-pressed="${lang===x[0]}">${x[1]}</button>`).join('')}</div>
  <div class="gin"><img class="gl" src="${IMG.main}" alt="World Swimming Club"><p class="gt">${d.pj[0][0]}</p><h1 class="disp ge">WSC Endemic</h1><p class="gs">${d.gSub}</p><p class="g1">${d.gP}</p>
  <button class="btn g3" data-enter="home">${d.gEnter}</button></div>`;
 }
@@ -871,11 +974,15 @@ $('gate').addEventListener('click',e=>{
 const saveC=()=>{try{localStorage.setItem('wsc-cart',JSON.stringify(cart))}catch(e){}};
 const saveO=()=>{try{localStorage.setItem('wsc-orders',JSON.stringify(orders))}catch(e){}};
 function cartQty(){return cart.reduce((a,x)=>a+x.qty,0)}
-function cartTotal(){return cart.reduce((a,x)=>a+P[x.p].pr*x.qty,0)}
+function cartTotal(){return cart.reduce((a,x)=>a+unitPr(x.p,x.size)*x.qty,0)}
 function updateCount(){const c=$('cnt');if(c)c.textContent=cartQty()}
 function addToCart(i){
- const size=sel[i]||'M',f=cart.find(x=>x.p===i&&x.size===size);
- if(f)f.qty=Math.min(9,f.qty+1);else cart.push({p:i,size:size,qty:1});
+ const z=sel[i]||'M',col=selc[i]||INV[i].colors[0];
+ if(vsold(i,col,z)){toast(IV[lang].soldOut);return}
+ const held=cart.filter(x=>x.p===i&&x.size===z&&x.color===col).reduce((a,x)=>a+x.qty,0);
+ if(held>=vstock(i,col,z)){toast(IV[lang].soldOut);return}
+ const f=cart.find(x=>x.p===i&&x.size===z&&x.color===col);
+ if(f)f.qty=Math.min(9,f.qty+1);else cart.push({p:i,size:z,color:col,qty:1});
  saveC();updateCount();renderCart();toast(T[lang].added);
 }
 function ordersHTML(d){
@@ -887,7 +994,7 @@ function ordersHTML(d){
 function renderCart(){
  const d=T[lang],el=$('v-cart');if(!el)return;
  if(!cart.length){el.innerHTML=`<h1 class="disp t">${d.cartH}</h1><p class="lead">${d.cartEmpty}</p><p><button class="btn" data-v="shop">${d.cartShop}</button></p>`;return}
- el.innerHTML=`<h1 class="disp t">${d.cartH}</h1><div class="cartwrap"><div>${cart.map((x,i)=>`<div class="ci"><img src="${IMG[P[x.p].k+'B']}" alt=""><div><b>${d.p[x.p].n}</b><div class="sz">${d.size}: ${x.size}</div><div class="qty"><button data-q="-1" data-ci="${i}" aria-label="-">−</button><span>${x.qty}</span><button data-q="1" data-ci="${i}" aria-label="+">+</button></div></div><div class="lp" data-pr="${P[x.p].pr*x.qty}">${won(P[x.p].pr*x.qty)}</div><button class="rm" data-rm="${i}" aria-label="${d.rm}">✕</button></div>`).join('')}</div>
+ el.innerHTML=`<h1 class="disp t">${d.cartH}</h1><div class="cartwrap"><div>${cart.map((x,i)=>`<div class="ci"><img src="${IMG[P[x.p].k+'B']}" alt=""><div><b>${d.p[x.p].n}</b><div class="sz">${x.color?escH(x.color)+' / ':''}${d.size}: ${x.size}</div><div class="qty"><button data-q="-1" data-ci="${i}" aria-label="-">−</button><span>${x.qty}</span><button data-q="1" data-ci="${i}" aria-label="+">+</button></div></div><div class="lp" data-pr="${unitPr(x.p,x.size)*x.qty}">${won(unitPr(x.p,x.size)*x.qty)}</div><button class="rm" data-rm="${i}" aria-label="${d.rm}">✕</button></div>`).join('')}</div>
  <aside class="sum2"><div class="tot"><span>${d.subT}</span><span data-pr="${cartTotal()}">${won(cartTotal())}</span></div>
  <form id="cf" novalidate><b>${d.cShip}</b>
  <label>${d.cName}<input id="cn" data-f="name" value="${escH(ship.name||(user?user.name:''))}" autocomplete="name"></label>
@@ -909,7 +1016,7 @@ $('v-cart').addEventListener('submit',e=>{
  if(!nm||ph.replace(/\D/g,'').length<8||!ad){$('cmsg').textContent=d.cErr;return}
  if(!user){pendingTo='cart';lt='in';toast(d.cLogin);showView('login');return}
  const dt=new Date(),id='WSC-'+dt.toISOString().slice(2,10).replace(/-/g,'')+'-'+Math.random().toString(36).slice(2,6).toUpperCase();
- orders.push({id:id,date:dt.toISOString(),email:user.email,items:cart.map(x=>({p:x.p,size:x.size,qty:x.qty,pr:P[x.p].pr})),total:cartTotal(),ship:ship});
+ orders.push({id:id,date:dt.toISOString(),email:user.email,items:cart.map(x=>({p:x.p,size:x.size,color:x.color,qty:x.qty,pr:unitPr(x.p,x.size)})),total:cartTotal(),ship:ship});
  saveO();cart=[];saveC();ship={name:'',phone:'',addr:'',memo:''};updateCount();renderCart();toast(d.cOk(id));showView('my');
 });
 
@@ -1056,7 +1163,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(!$('vm').hidden)
 
 /* ---------- admin ---------- */
 const AD={
-en:{title:"Admin",loginH:"Admin login",ghRepo:"GitHub repository (owner/repo)",ghBranch:"Branch",ghTok:"GitHub token (fine-grained, Contents: Read and write)",ghBad:"Check the repository, branch and token.",ghNet:"Could not reach GitHub. Check your connection and try again.",loginPg:"Admin login needs the 6-digit PIN and a GitHub token that can write to this site's repository. The token is kept only in this browser tab.",ghSaved:"Saved to GitHub. The site updates in 1–2 minutes (browser cache can delay it a little more).",ghE401:"The GitHub token is not valid.",ghE404:"Repository or branch not found, or the token has no write access.",ghE409:"The files on GitHub changed. Reload this page and try again.",ghEGen:"Saving to GitHub failed.",eRate:"You are publishing too often. Wait a moment and try again.",hsVidAdd:"Add video slide",hsVidNote:"Each video plays in full, then the next slide starts. 16:9 MP4 up to 20 MB works best.",hsMaxV:"You can add up to 4 video slides.",hsH:"Main screen slides",hsP:"Reorder, hide or add slides. Text is edited per language using the tabs.",hsVid:"Video slide",hsLogo:"Logo slide",hsProd:"Product slide",hsImg:"Image slide",hsAdd:"Add image slide",hsDur:"Seconds per slide",hsImgNote:"Image slides fill the screen, so a wide (16:9) photo works best. Up to 6.",fE:"Small label",fH:"Headline",fS2:"Description",fB:"Button text",hsC:"Caption",hsHead:"Heading",hsSub:"Subtext",hsBtn:"Button text (empty = no button)",hsLink:"Button goes to",hsLShop:"Products page",hsLClub:"The Club page",hsMin:"At least one slide must stay visible.",hsMax:"You can add up to 6 image slides.",txH:"Product text and price",txP:"Edit the name, price, short description, detail description and detail points for each language. The price is shared by all languages. Photos are replaced in the card above.",fN:"Name",fPr:"Price (KRW)",fD:"Short description (under the price)",fL:"Detail description (Details tab)",fS:"Detail points (one per line)",ePr:"Enter a price between 0 and 99,999,999.",pin:"6-digit admin PIN",pinBad:"The PIN is not correct.",pinLock:"Too many attempts. Try again in a minute.",loginP:"Admin access needs the 6-digit PIN and a Claude account that owns or can edit this page. The PIN alone is not enough.",cont:"Continue as site owner",chk:"Checking…",
+en:{title:"Admin",loginH:"Admin login",ghRepo:"GitHub repository (owner/repo)",ghBranch:"Branch",ghTok:"GitHub token (fine-grained, Contents: Read and write)",ghBad:"Check the repository, branch and token.",ghNet:"Could not reach GitHub. Check your connection and try again.",loginPg:"Admin login needs the 6-digit PIN and a GitHub token that can write to this site's repository. The token is kept only in this browser tab.",ghSaved:"Saved to GitHub. The site updates in 1–2 minutes (browser cache can delay it a little more).",ghE401:"The GitHub token is not valid.",ghE404:"Repository or branch not found, or the token has no write access.",ghE409:"The files on GitHub changed. Reload this page and try again.",ghEGen:"Saving to GitHub failed.",eRate:"You are publishing too often. Wait a moment and try again.",lgH:"Logo images",lgP:"The round main logo and the small WSC logo. They appear in the header, the hero logo slide, the intro and the footer.",lgMain:"Main logo",lgSub:"Small WSC logo",hsVidAdd:"Add video slide",hsVidNote:"Each video plays in full, then the next slide starts. 16:9 MP4 up to 20 MB works best.",hsMaxV:"You can add up to 4 video slides.",hsH:"Main screen slides",hsP:"Reorder, hide or add slides. Text is edited per language using the tabs.",hsVid:"Video slide",hsLogo:"Logo slide",hsProd:"Product slide",hsImg:"Image slide",hsAdd:"Add image slide",hsDur:"Seconds per slide",hsImgNote:"Image slides fill the screen, so a wide (16:9) photo works best. Up to 6.",fE:"Small label",fH:"Headline",fS2:"Description",fB:"Button text",hsC:"Caption",hsHead:"Heading",hsSub:"Subtext",hsBtn:"Button text (empty = no button)",hsLink:"Button goes to",hsLShop:"Products page",hsLClub:"The Club page",hsMin:"At least one slide must stay visible.",hsMax:"You can add up to 6 image slides.",txH:"Product text and price",txP:"Edit the name, price, short description, detail description and detail points for each language. The price is shared by all languages. Photos are replaced in the card above.",fN:"Name",fPr:"Price (KRW)",fD:"Short description (under the price)",fL:"Detail description (Details tab)",fS:"Detail points (one per line)",ePr:"Enter a price between 0 and 99,999,999.",pin:"6-digit admin PIN",pinBad:"The PIN is not correct.",pinLock:"Too many attempts. Try again in a minute.",loginP:"Admin access needs the 6-digit PIN and a Claude account that owns or can edit this page. The PIN alone is not enough.",cont:"Continue as site owner",chk:"Checking…",
  no:"This account does not have edit rights for this page.",none:"Admin is only available when this page is opened inside Claude and you are signed in as the owner or an editor.",
  ok:"Signed in as admin. Changes you make here appear on the page right away. Press Save & publish to make them live for everyone.",exit:"Exit admin",editor:"Editor",
  vidH:"Main video",vidP:"Plays on the first main-screen slide. MP4, up to 20 MB.",rep:"Replace",phH:"Product photos",phP:"Back is the large photo. Front or detail appears in the description.",back:"Back",front:"Front / detail",
@@ -1066,7 +1173,7 @@ en:{title:"Admin",loginH:"Admin login",ghRepo:"GitHub repository (owner/repo)",g
  save:"Save & publish",discard:"Discard changes",dirty:"Unsaved changes",saving:"Publishing…",saved:"Published. Reloading…",upping:"Uploading…",
  eBig:"File is larger than 20 MB.",eType:"Unsupported file type.",eUp:"Upload failed. Check your edit rights and try again.",eNo:"You do not have permission to edit this page.",
  eConf:"A newer version was published. Reloading…",eLarge:"The page is too large to publish. MP3 and WAV tracks are stored inside the page, so delete some or add music as M4A/MP4 files instead.",eGen:"Could not publish. Try again.",up:"Up",down:"Down",del:"Delete",show:"Show",eMp3:"MP3/WAV files are stored inside the page and must be 8 MB or smaller. Use M4A or MP4 for up to 20 MB."},
-ko:{title:"관리자",loginH:"관리자 로그인",ghRepo:"GitHub 저장소 (owner/repo)",ghBranch:"브랜치",ghTok:"GitHub 토큰 (세분화된 토큰, Contents: 읽기 및 쓰기)",ghBad:"저장소, 브랜치, 토큰을 확인해 주세요.",ghNet:"GitHub에 연결하지 못했어요. 인터넷 연결을 확인하고 다시 시도해 주세요.",loginPg:"관리자 로그인에는 PIN 6자리와, 이 사이트 저장소에 쓸 수 있는 GitHub 토큰이 필요해요. 토큰은 이 브라우저 탭에만 저장돼요.",ghSaved:"GitHub에 저장했어요. 사이트에 반영되기까지 1~2분 걸려요(브라우저 캐시 때문에 조금 더 걸릴 수 있어요).",ghE401:"GitHub 토큰이 올바르지 않아요.",ghE404:"저장소나 브랜치를 찾을 수 없거나, 토큰에 쓰기 권한이 없어요.",ghE409:"GitHub의 파일이 바뀌었어요. 페이지를 새로 고치고 다시 시도해 주세요.",ghEGen:"GitHub에 저장하지 못했어요.",eRate:"게시를 너무 자주 하고 있어요. 잠시 뒤에 다시 시도해 주세요.",hsVidAdd:"영상 슬라이드 추가",hsVidNote:"영상은 끝까지 재생된 뒤 다음 슬라이드로 넘어가요. 가로형(16:9) MP4, 20MB 이하가 가장 좋아요.",hsMaxV:"영상 슬라이드는 최대 4개까지 추가할 수 있어요.",hsH:"메인 화면 슬라이드",hsP:"슬라이드 순서를 바꾸거나 숨기고, 이미지 슬라이드를 추가할 수 있어요. 문구는 위 언어 탭별로 수정해요.",hsVid:"영상 슬라이드",hsLogo:"로고 슬라이드",hsProd:"제품 슬라이드",hsImg:"이미지 슬라이드",hsAdd:"이미지 슬라이드 추가",hsDur:"슬라이드당 시간(초)",hsImgNote:"이미지 슬라이드는 화면을 꽉 채우므로 가로형(16:9) 사진이 가장 잘 어울려요. 최대 6개.",fE:"작은 라벨",fH:"큰 제목",fS2:"설명",fB:"버튼 글자",hsC:"캡션",hsHead:"제목",hsSub:"설명 문구",hsBtn:"버튼 글자 (비우면 버튼 없음)",hsLink:"버튼 이동 위치",hsLShop:"제품 목록 페이지",hsLClub:"더 클럽 페이지",hsMin:"슬라이드는 최소 1개는 보여야 해요.",hsMax:"이미지 슬라이드는 최대 6개까지 추가할 수 있어요.",txH:"제품 문구와 가격",txP:"언어별로 제품 이름, 짧은 설명, 상세 설명, 상세 항목을 수정할 수 있어요. 가격은 모든 언어에 공통이고, 사진은 위 카드에서 교체해요.",fN:"이름",fPr:"가격(원)",fD:"짧은 설명 (가격 아래)",fL:"상세 설명 (Details 탭)",fS:"상세 항목 (한 줄에 하나)",ePr:"0원 이상 99,999,999원 이하로 입력해 주세요.",pin:"관리자 PIN 6자리",pinBad:"PIN이 맞지 않아요.",pinLock:"시도 횟수를 넘었어요. 1분 뒤에 다시 시도해 주세요.",loginP:"관리자 로그인에는 PIN 6자리와, 이 페이지의 소유자 또는 편집자 Claude 계정이 모두 필요해요. PIN만으로는 들어올 수 없어요.",cont:"사이트 소유자로 계속",chk:"확인 중…",
+ko:{title:"관리자",loginH:"관리자 로그인",ghRepo:"GitHub 저장소 (owner/repo)",ghBranch:"브랜치",ghTok:"GitHub 토큰 (세분화된 토큰, Contents: 읽기 및 쓰기)",ghBad:"저장소, 브랜치, 토큰을 확인해 주세요.",ghNet:"GitHub에 연결하지 못했어요. 인터넷 연결을 확인하고 다시 시도해 주세요.",loginPg:"관리자 로그인에는 PIN 6자리와, 이 사이트 저장소에 쓸 수 있는 GitHub 토큰이 필요해요. 토큰은 이 브라우저 탭에만 저장돼요.",ghSaved:"GitHub에 저장했어요. 사이트에 반영되기까지 1~2분 걸려요(브라우저 캐시 때문에 조금 더 걸릴 수 있어요).",ghE401:"GitHub 토큰이 올바르지 않아요.",ghE404:"저장소나 브랜치를 찾을 수 없거나, 토큰에 쓰기 권한이 없어요.",ghE409:"GitHub의 파일이 바뀌었어요. 페이지를 새로 고치고 다시 시도해 주세요.",ghEGen:"GitHub에 저장하지 못했어요.",eRate:"게시를 너무 자주 하고 있어요. 잠시 뒤에 다시 시도해 주세요.",lgH:"로고 이미지",lgP:"원형 메인 로고와 작은 WSC 로고예요. 헤더, 히어로 로고 슬라이드, 인트로, 푸터에 쓰여요.",lgMain:"메인 로고",lgSub:"작은 WSC 로고",hsVidAdd:"영상 슬라이드 추가",hsVidNote:"영상은 끝까지 재생된 뒤 다음 슬라이드로 넘어가요. 가로형(16:9) MP4, 20MB 이하가 가장 좋아요.",hsMaxV:"영상 슬라이드는 최대 4개까지 추가할 수 있어요.",hsH:"메인 화면 슬라이드",hsP:"슬라이드 순서를 바꾸거나 숨기고, 이미지 슬라이드를 추가할 수 있어요. 문구는 위 언어 탭별로 수정해요.",hsVid:"영상 슬라이드",hsLogo:"로고 슬라이드",hsProd:"제품 슬라이드",hsImg:"이미지 슬라이드",hsAdd:"이미지 슬라이드 추가",hsDur:"슬라이드당 시간(초)",hsImgNote:"이미지 슬라이드는 화면을 꽉 채우므로 가로형(16:9) 사진이 가장 잘 어울려요. 최대 6개.",fE:"작은 라벨",fH:"큰 제목",fS2:"설명",fB:"버튼 글자",hsC:"캡션",hsHead:"제목",hsSub:"설명 문구",hsBtn:"버튼 글자 (비우면 버튼 없음)",hsLink:"버튼 이동 위치",hsLShop:"제품 목록 페이지",hsLClub:"더 클럽 페이지",hsMin:"슬라이드는 최소 1개는 보여야 해요.",hsMax:"이미지 슬라이드는 최대 6개까지 추가할 수 있어요.",txH:"제품 문구와 가격",txP:"언어별로 제품 이름, 짧은 설명, 상세 설명, 상세 항목을 수정할 수 있어요. 가격은 모든 언어에 공통이고, 사진은 위 카드에서 교체해요.",fN:"이름",fPr:"가격(원)",fD:"짧은 설명 (가격 아래)",fL:"상세 설명 (Details 탭)",fS:"상세 항목 (한 줄에 하나)",ePr:"0원 이상 99,999,999원 이하로 입력해 주세요.",pin:"관리자 PIN 6자리",pinBad:"PIN이 맞지 않아요.",pinLock:"시도 횟수를 넘었어요. 1분 뒤에 다시 시도해 주세요.",loginP:"관리자 로그인에는 PIN 6자리와, 이 페이지의 소유자 또는 편집자 Claude 계정이 모두 필요해요. PIN만으로는 들어올 수 없어요.",cont:"사이트 소유자로 계속",chk:"확인 중…",
  no:"이 계정에는 이 페이지의 편집 권한이 없어요.",none:"관리자 기능은 이 페이지를 Claude 안에서 열고, 소유자나 편집자 계정으로 로그인했을 때만 쓸 수 있어요.",
  ok:"관리자로 로그인했어요. 여기서 바꾸는 내용은 바로 화면에 보이고, 「저장하고 게시」를 눌러야 모든 방문자에게 적용돼요.",exit:"관리자 나가기",editor:"편집기",
  vidH:"메인 영상",vidP:"메인 화면 첫 번째 슬라이드에서 재생돼요. MP4, 20MB 이하.",rep:"교체",phH:"제품 사진",phP:"뒷면이 큰 대표 사진이고, 앞면·디테일 사진은 상세 설명에 나와요.",back:"뒷면",front:"앞면 / 디테일",
@@ -1110,7 +1217,7 @@ async function ghPut(path,b64,msg,sha){
 async function ghSave(){
  if(busy||!adminOK||!GH)return;busy=true;const a=AT();setMsg(a.saving);
  try{
-  draft.music=tracks.map(x=>Object.assign({},x));draft.pt=PTR;draft.pr=P.map(p=>p.pr);draft.ht=HTR;draft.hs=HS;
+  draft.music=tracks.map(x=>Object.assign({},x));draft.pt=PTR;draft.pr=P.map(p=>p.pr);draft.inv=INV;draft.orders=ORD;draft.ht=HTR;draft.hs=HS;
   const cfg=clone(draft),files=[],MIME={'image/webp':'webp','image/jpeg':'jpg','image/png':'png','video/mp4':'mp4','video/webm':'webm','audio/mpeg':'mp3','audio/mp4':'m4a','audio/x-m4a':'m4a','audio/wav':'wav','audio/x-wav':'wav','audio/ogg':'ogg','audio/aac':'aac','audio/webm':'webm'};
   let n=0;
   const walk=o=>{for(const k in o){const v=o[k];
@@ -1191,7 +1298,7 @@ function applyLayout(){
 function discardDraft(silent){
  draft=clone(CFG);dirty=false;
  Object.keys(IMG).forEach(k=>delete IMG[k]);Object.assign(IMG,CFG.img);CLIPS=draft.clips;
- loadProd(CFG);loadHero(CFG);tracks=JSON.parse(JSON.stringify(CFG.music||DEFMUS));mIdx=Math.min(mIdx,Math.max(0,tracks.length-1));if(!tracks.length){mStop();mPlaying=false}else if(mPlaying)mStart();
+ loadProd(CFG);loadHero(CFG);invLoad(CFG);tracks=JSON.parse(JSON.stringify(CFG.music||DEFMUS));mIdx=Math.min(mIdx,Math.max(0,tracks.length-1));if(!tracks.length){mStop();mPlaying=false}else if(mPlaying)mStart();
  applyLayout();applyHeroPos();paint();renderBar();renderMusic();if(!silent)renderAdmin();
 }
 function renderAdmin(){
@@ -1203,6 +1310,7 @@ function renderAdmin(){
  const sec=(k)=>a.secs[k];
  el.innerHTML=`<h1 class="disp t">${a.title}</h1><p class="lead">${a.ok}</p>
  <div class="acard"><h4>${a.vidH}</h4><p>${a.vidP}</p><video src="${draft.img.vid||''}" muted controls playsinline></video><label class="ubtn">${a.rep}<input type="file" accept="video/*" data-up="vid" hidden></label></div>
+ <div class="acard"><h4>${a.lgH}</h4><p>${a.lgP}</p><div class="photos"><div class="photo"><img src="${draft.img.main}" alt="" style="background:#000"><span>${a.lgMain}</span><label class="ubtn">${a.rep}<input type="file" accept="image/*" data-up="main" hidden></label></div><div class="photo"><img src="${draft.img.sub}" alt="" style="background:#000"><span>${a.lgSub}</span><label class="ubtn">${a.rep}<input type="file" accept="image/*" data-up="sub" hidden></label></div></div></div>
  <div class="acard"><h4>${a.phH}</h4><p>${a.phP}</p>${P.map((p,i)=>`<div class="photos"><b style="flex:0 0 100%">${PNAMES[i]}</b>
   <div class="photo"><img src="${draft.img[p.k+'B']}" alt=""><span>${a.back}</span><label class="ubtn">${a.rep}<input type="file" accept="image/*" data-up="${p.k}B" hidden></label></div>
   <div class="photo"><img src="${draft.img[FIG[i][0]]}" alt=""><span>${a.front}</span><label class="ubtn">${a.rep}<input type="file" accept="image/*" data-up="${FIG[i][0]}" hidden></label></div></div>`).join('')}</div>
@@ -1213,7 +1321,7 @@ function renderAdmin(){
   <div class="arow"><label class="ubtn">${a.hsAdd}<input type="file" accept="image/*" data-up="slideadd" hidden></label> <label class="ubtn">${a.hsVidAdd}<input type="file" accept="video/*" data-up="slidevid" hidden></label>
    <label style="font-size:13px;display:flex;gap:8px;align-items:center">${a.hsDur}<input type="number" min="3" max="20" step="1" data-hdur value="${HS.dur}" style="width:70px;background:#000;border:1px solid var(--ash);color:var(--bone);padding:6px"></label></div>
   <p style="margin:6px 0 0">${a.hsImgNote}</p>
-  <div class="tabs2" role="tablist">${[['en','EN'],['ja','日本語'],['ko','한국어']].map(x=>`<button role="tab" data-al="${x[0]}" aria-selected="${(adLang||lang)===x[0]}">${x[1]}</button>`).join('')}</div>
+  <div class="tabs2" role="tablist">${[['en','EN'],['ja','日本語']].map(x=>`<button role="tab" data-al="${x[0]}" aria-selected="${(adLang||lang)===x[0]}">${x[1]}</button>`).join('')}</div>
   ${(()=>{const al=adLang||lang,r=HTR[al];return `<div class="ptx"><b>${a.hsVid}</b>
    <label>${a.fE}<input data-hk="eyebrow" maxlength="100" value="${escH(r.eyebrow)}"></label>
    <label>${a.fH}<input data-hk="h1" maxlength="100" value="${escH(r.h1)}"></label>
@@ -1227,8 +1335,8 @@ function renderAdmin(){
    <label>${a.hsBtn}<input data-sid="${x.id}" data-sk="b" maxlength="120" value="${escH(t.b||'')}"></label>
    <label>${a.hsLink}<select data-sid="${x.id}" data-sk="link"><option value="shop" ${x.link==='shop'||!x.link?'selected':''}>${a.hsLShop}</option><option value="club" ${x.link==='club'?'selected':''}>${a.hsLClub}</option>${P.map((p,i)=>`<option value="p${i}" ${x.link==='p'+i?'selected':''}>${PNAMES[i]}</option>`).join('')}</select></label></div>`}).join('')}
  </div>
- <div class="acard"><h4>${a.txH}</h4><p>${a.txP}</p>
-  <div class="tabs2" role="tablist">${[['en','EN'],['ja','日本語'],['ko','한국어']].map(x=>`<button role="tab" data-al="${x[0]}" aria-selected="${(adLang||lang)===x[0]}">${x[1]}</button>`).join('')}</div>
+ ${invCard()}<div class="acard"><h4>${a.txH}</h4><p>${a.txP}</p>
+  <div class="tabs2" role="tablist">${[['en','EN'],['ja','日本語']].map(x=>`<button role="tab" data-al="${x[0]}" aria-selected="${(adLang||lang)===x[0]}">${x[1]}</button>`).join('')}</div>
   ${P.map((p,i)=>{const al=adLang||lang,r=PTR[al][i];return `<div class="ptx"><b>${PNAMES[i]}</b>
    <label>${a.fN}<input data-pf="n" data-pi="${i}" maxlength="60" value="${escH(r.n||'')}"></label>
    <label>${a.fPr}<input type="number" inputmode="numeric" min="0" step="1000" data-ppr="${i}" value="${p.pr}"></label>
@@ -1298,7 +1406,7 @@ async function savePublish(){
  if(busy||!adminOK)return;busy=true;const a=AT();let mb='';setMsg(a.saving);
  try{
   const art=window.claude&&window.claude.use?await window.claude.use('artifact'):null;if(!art)throw{code:'not_writer'};
-  draft.music=tracks.map(x=>Object.assign({},x));draft.pt=PTR;draft.pr=P.map(p=>p.pr);draft.ht=HTR;draft.hs=HS;
+  draft.music=tracks.map(x=>Object.assign({},x));draft.pt=PTR;draft.pr=P.map(p=>p.pr);draft.inv=INV;draft.orders=ORD;draft.ht=HTR;draft.hs=HS;
   const html=buildHtml(draft);mb=(html.length/1048576).toFixed(1);
   try{sessionStorage.setItem('wsc-admin','1')}catch(e){}
   setMsg(a.saving+' ('+mb+' MB)');
@@ -1310,6 +1418,7 @@ document.addEventListener('click',e=>{
  const b=e.target.closest('[data-ad]');
  if(b){const k=b.dataset.ad;if(k==='login')enterAdmin();else if(k==='save')savePublish();else if(k==='discard')discardDraft();else if(k==='exit')exitAdmin();return}
  if(!adminOK)return;
+ if(invClick(e))return;
  const hm=e.target.closest('[data-hm]');
  if(hm){moveIn(HS.list,+hm.dataset.hi,+hm.dataset.hm);markDirty();paint();renderAdmin();return}
  const hd=e.target.closest('[data-hd]');
@@ -1323,6 +1432,7 @@ document.addEventListener('click',e=>{
 });
 $('v-admin').addEventListener('change',e=>{
  const t=e.target;if(!adminOK)return;
+ if(invChange(t))return;
  if(t.dataset.hon!==undefined){const x=HS.list[+t.dataset.hon];x.on=t.checked?1:0;if(!HS.list.some(y=>y.on!==0&&y.on!==false)){x.on=1;toast(AT().hsMin)}markDirty();paint();renderAdmin();return}
  if(t.dataset.hdur!==undefined){HS.dur=Math.min(20,Math.max(3,Math.round(Number(t.value))||6));markDirty();paint();renderAdmin();return}
  if(t.dataset.hk){const al=adLang||lang;HTR[al][t.dataset.hk]=t.value.trim().slice(0,t.dataset.hk==='sub'?300:100);syncHero();markDirty();paint();return}
