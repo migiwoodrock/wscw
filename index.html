@@ -625,8 +625,8 @@ loadHero(CFG);
 /* ---------- inventory, sale status, manual orders ---------- */
 const INVSZ=['S','M','L','XL'];
 const IV={
-en:{soldOut:"Sold out",invH:"Inventory & orders",invP:"Set stock, size status and sale % for each color and size. Stock at 0 is sold out automatically. Changes go live after Save & publish.",colorsL:"Colors (comma separated)",size:"Size",status:"Status",sale:"Sale %",stock:"Stock",color:"Color",on:"On sale",sold:"Sold out",auto:"Sold out (stock 0)",ok:"In stock",ordH:"Manual order entry",ordP:"Record an order received outside this site (phone, DM, store). Stock goes down automatically.",product:"Product",qty:"Qty",memo:"Memo",ordAdd:"Record order",ordBad:"Check the color name, size, quantity and stock.",ordLog:"Order log",csvO:"Download orders (CSV)",csvS:"Download stock (CSV)",date:"Date",total:"Total",none:"No orders recorded yet.",note:"Orders placed on this site stay in each visitor's own browser, so they do not appear here. For now, record them with manual entry."},
-ja:{soldOut:"SOLD OUT",invH:"在庫・注文管理",invP:"色とサイズごとに在庫数、サイズの状態、セール率を設定します。在庫が0になると自動で SOLD OUT になります。変更は「保存して公開」の後に反映されます。",colorsL:"カラー（カンマ区切り）",size:"サイズ",status:"状態",sale:"セール率(%)",stock:"在庫",color:"カラー",on:"販売中",sold:"SOLD OUT",auto:"SOLD OUT（在庫0）",ok:"在庫あり",ordH:"注文の手入力",ordP:"電話・DM・店頭など、サイトの外で受けた注文を記録します。在庫は自動で減ります。",product:"商品",qty:"数量",memo:"メモ",ordAdd:"注文を記録",ordBad:"カラー名、サイズ、数量、在庫を確認してください。",ordLog:"注文履歴",csvO:"注文を保存（CSV）",csvS:"在庫を保存（CSV）",date:"日時",total:"合計",none:"まだ注文はありません。",note:"サイトで行われた注文は各訪問者のブラウザにだけ残るため、ここには表示されません。今は手入力で記録してください。"}
+en:{wonL:"Discount (KRW)",soldOut:"Sold out",invH:"Inventory & orders",invP:"Set stock, size status and sale % for each color and size. Stock at 0 is sold out automatically. Changes go live after Save & publish.",colorsL:"Colors (comma separated)",size:"Size",status:"Status",sale:"Sale %",stock:"Stock",color:"Color",on:"On sale",sold:"Sold out",auto:"Sold out (stock 0)",ok:"In stock",ordH:"Manual order entry",ordP:"Record an order received outside this site (phone, DM, store). Stock goes down automatically.",product:"Product",qty:"Qty",memo:"Memo",ordAdd:"Record order",ordBad:"Check the color name, size, quantity and stock.",ordLog:"Order log",csvO:"Download orders (CSV)",csvS:"Download stock (CSV)",date:"Date",total:"Total",none:"No orders recorded yet.",note:"Orders placed on this site stay in each visitor's own browser, so they do not appear here. For now, record them with manual entry."},
+ja:{wonL:"割引額(KRW)",soldOut:"SOLD OUT",invH:"在庫・注文管理",invP:"色とサイズごとに在庫数、サイズの状態、セール率を設定します。在庫が0になると自動で SOLD OUT になります。変更は「保存して公開」の後に反映されます。",colorsL:"カラー（カンマ区切り）",size:"サイズ",status:"状態",sale:"セール率(%)",stock:"在庫",color:"カラー",on:"販売中",sold:"SOLD OUT",auto:"SOLD OUT（在庫0）",ok:"在庫あり",ordH:"注文の手入力",ordP:"電話・DM・店頭など、サイトの外で受けた注文を記録します。在庫は自動で減ります。",product:"商品",qty:"数量",memo:"メモ",ordAdd:"注文を記録",ordBad:"カラー名、サイズ、数量、在庫を確認してください。",ordLog:"注文履歴",csvO:"注文を保存（CSV）",csvS:"在庫を保存（CSV）",date:"日時",total:"合計",none:"まだ注文はありません。",note:"サイトで行われた注文は各訪問者のブラウザにだけ残るため、ここには表示されません。今は手入力で記録してください。"}
 };
 let INV={},ORD=[],selc={};
 const invDefColors=i=>P[i].k==='jkt'?['Charcoal']:['Black'];
@@ -639,13 +639,13 @@ function invLoad(c){
   INV[i]={colors:colors,stock:{},size:{}};
   const st=s.stock||{};
   colors.forEach(col=>INVSZ.forEach(z=>{const k=col+'|'+z;INV[i].stock[k]=Math.max(0,Math.floor(Number(st[k])||0))}));
-  INVSZ.forEach(z=>{const m=(s.size||{})[z]||{};INV[i].size[z]={status:m.status==='sold'?'sold':'on',sale:Math.min(90,Math.max(0,Math.floor(Number(m.sale)||0)))}});
+  INVSZ.forEach(z=>{const m=(s.size||{})[z]||{};INV[i].size[z]={won:Math.max(0,Math.floor(Number(m.won)||0)),status:m.status==='sold'?'sold':'on',sale:Math.min(90,Math.max(0,Math.floor(Number(m.sale)||0)))}});
  });
  ORD=Array.isArray(c&&c.orders)?c.orders.slice(-1000):[];
 }
 const vstock=(i,col,z)=>INV[i].stock[col+'|'+z]||0;
 const vsold=(i,col,z)=>vstock(i,col,z)<=0||INV[i].size[z].status==='sold';
-const unitPr=(i,z)=>Math.round(P[i].pr*(1-INV[i].size[z].sale/100));
+const unitPr=(i,z)=>{const s=INV[i].size[z];return s.won>0?Math.max(0,P[i].pr-s.won):Math.round(P[i].pr*(1-s.sale/100))};
 const effPr=i=>unitPr(i,sel[i]||'M');
 function szBtn(i,z){
  const col=selc[i]||INV[i].colors[0],off=vsold(i,col,z),sale=INV[i].size[z].sale;
@@ -683,11 +683,11 @@ function csvOrders(){
 function invCard(){
  const v=IV[lang]||IV.en;
  const products=P.map((p,i)=>{
-  const sizeRows=INVSZ.map(z=>`<tr><td>${z}</td><td><select data-ist="${i}|${z}"><option value="on"${INV[i].size[z].status==='on'?' selected':''}>${v.on}</option><option value="sold"${INV[i].size[z].status==='sold'?' selected':''}>${v.sold}</option></select></td><td><input type="number" min="0" max="90" step="1" data-isale="${i}|${z}" value="${INV[i].size[z].sale}" class="inum"></td></tr>`).join('');
+  const sizeRows=INVSZ.map(z=>`<tr><td>${z}</td><td><select data-ist="${i}|${z}"><option value="on"${INV[i].size[z].status==='on'?' selected':''}>${v.on}</option><option value="sold"${INV[i].size[z].status==='sold'?' selected':''}>${v.sold}</option></select></td><td><input type="number" min="0" max="90" step="1" data-isale="${i}|${z}" value="${INV[i].size[z].sale}" class="inum"></td><td><input type="number" min="0" step="1000" data-iwon="${i}|${z}" value="${INV[i].size[z].won}" class="inum"></td></tr>`).join('');
   const stockRows=INV[i].colors.map(col=>INVSZ.map(z=>`<tr><td>${escH(col)}</td><td>${z}</td><td><input type="number" min="0" step="1" data-istk="${i}|${escH(col)}|${z}" value="${vstock(i,col,z)}" class="inum"></td><td>${vsold(i,col,z)?`<b style="color:var(--ember)">${vstock(i,col,z)<=0?v.auto:v.sold}</b>`:v.ok}</td></tr>`).join('')).join('');
   return `<div class="ptx"><b>${PNAMES[i]}</b>
    <label>${v.colorsL}<input data-icol="${i}" value="${escH(INV[i].colors.join(', '))}"></label>
-   <table class="ct"><tr><th>${v.size}</th><th>${v.status}</th><th>${v.sale}</th></tr>${sizeRows}</table>
+   <table class="ct"><tr><th>${v.size}</th><th>${v.status}</th><th>${v.sale}</th><th>${v.wonL}</th></tr>${sizeRows}</table>
    <table class="ct"><tr><th>${v.color}</th><th>${v.size}</th><th>${v.stock}</th><th>${v.status}</th></tr>${stockRows}</table></div>`;
  }).join('');
  const opts=P.map((p,i)=>`<option value="${i}">${PNAMES[i]}</option>`).join('');
@@ -710,6 +710,7 @@ function invChange(t){
  else if(t.dataset.istk!==undefined){const[i,col,z]=t.dataset.istk.split('|');INV[+i].stock[col+'|'+z]=Math.max(0,Math.floor(Number(t.value))||0)}
  else if(t.dataset.ist!==undefined){const[i,z]=t.dataset.ist.split('|');INV[+i].size[z].status=t.value==='sold'?'sold':'on'}
  else if(t.dataset.isale!==undefined){const[i,z]=t.dataset.isale.split('|');INV[+i].size[z].sale=Math.min(90,Math.max(0,Math.floor(Number(t.value))||0))}
+ else if(t.dataset.iwon!==undefined){const[i,z]=t.dataset.iwon.split('|');INV[+i].size[z].won=Math.max(0,Math.floor(Number(t.value))||0)}
  else return false;
  markDirty();paint();renderAdmin();return true;
 }
@@ -722,6 +723,59 @@ function invClick(e){
 }
 
 invLoad(CFG);
+/* ---------- on-page editing (admin) ---------- */
+let edOpen=false,edLang=null;
+function replBtn(x){
+ const a=AT();
+ if(x.t==='video')return `<label class="ubtn">${a.rep}<input type="file" accept="video/*" data-up="vid" hidden></label>`;
+ if(x.t==='logo')return `<label class="ubtn">${a.rep}<input type="file" accept="image/*" data-up="main" hidden></label>`;
+ if(x.t==='product')return `<label class="ubtn">${a.rep}<input type="file" accept="image/*" data-up="${P[x.p].k}B" hidden></label>`;
+ return '';
+}
+function editPanel(i){
+ const a=AT(),al=edLang||lang,r=PTR[al][i],v=IV[lang]||IV.en;
+ const sizes=INVSZ.map(z=>{const s=INV[i].size[z];return `<tr><td>${z}</td><td><select data-ist="${i}|${z}"><option value="on"${s.status==='on'?' selected':''}>${v.on}</option><option value="sold"${s.status==='sold'?' selected':''}>${v.sold}</option></select></td><td><input type="number" min="0" max="90" step="1" data-isale="${i}|${z}" value="${s.sale}" class="inum"></td><td><input type="number" min="0" step="1000" data-iwon="${i}|${z}" value="${s.won}" class="inum"></td></tr>`}).join('');
+ const stocks=INV[i].colors.map(col=>INVSZ.map(z=>`<tr><td>${escH(col)}</td><td>${z}</td><td><input type="number" min="0" step="1" data-istk="${i}|${escH(col)}|${z}" value="${vstock(i,col,z)}" class="inum"></td></tr>`).join('')).join('');
+ return `<div class="acard" style="max-width:none">
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap"><b>EDIT · ${PNAMES[i]}</b><button class="ubtn" data-edit-close>Done</button></div>
+  <div class="tabs2" role="tablist" style="margin-top:12px">${['en','ja'].map(x=>`<button role="tab" data-edl="${x}" aria-selected="${al===x}">${x==='en'?'EN':'日本語'}</button>`).join('')}</div>
+  <div class="ptx"><label>${a.fN}<input data-pf="n" data-pi="${i}" maxlength="60" value="${escH(r.n||'')}"></label>
+   <label>${a.fPr}<input type="number" min="0" step="1000" data-ppr="${i}" value="${P[i].pr}"></label>
+   <label>${a.fD}<textarea rows="2" data-pf="d" data-pi="${i}" maxlength="400">${escH(r.d||'')}</textarea></label>
+   <label>${a.fL}<textarea rows="5" data-pf="l" data-pi="${i}" maxlength="2000">${escH(r.l||'')}</textarea></label>
+   <label>${a.fS}<textarea rows="4" data-pf="s" data-pi="${i}">${escH((r.s||[]).join('\n'))}</textarea></label></div>
+  <div class="photos"><div class="photo"><img src="${IMG[P[i].k+'B']}" alt=""><span>${a.back}</span><label class="ubtn">${a.rep}<input type="file" accept="image/*" data-up="${P[i].k}B" hidden></label></div>
+   <div class="photo"><img src="${IMG[FIG[i][0]]}" alt=""><span>${a.front}</span><label class="ubtn">${a.rep}<input type="file" accept="image/*" data-up="${FIG[i][0]}" hidden></label></div></div>
+  <div class="ptx"><label>${v.colorsL}<input data-icol="${i}" value="${escH(INV[i].colors.join(', '))}"></label>
+   <table class="ct"><tr><th>${v.size}</th><th>${v.status}</th><th>${v.sale}</th><th>${v.wonL}</th></tr>${sizes}</table>
+   <table class="ct"><tr><th>${v.color}</th><th>${v.size}</th><th>${v.stock}</th></tr>${stocks}</table></div>
+ </div>`;
+}
+document.addEventListener('change',e=>{
+ const t=e.target;if(!adminOK||!t||!t.closest||t.closest('#v-admin'))return;
+ if(t.dataset.up!==undefined){handleUpload(t).then(()=>{if(dI!==null)renderDetail()});return}
+ const al=edLang||lang;
+ if(t.dataset.pf!==undefined){
+  const i=+t.dataset.pi,f=t.dataset.pf,r=PTR[al][i];
+  if(f==='s')r.s=t.value.split('\n').map(x=>x.trim().slice(0,120)).filter(Boolean).slice(0,12);
+  else{const v=t.value.trim().slice(0,f==='n'?60:f==='d'?400:2000);if(f==='n'&&!v)r.n=PT0[al][i].n;else r[f]=v}
+  syncProd();markDirty();paint();if(dI!==null)renderDetail();return;
+ }
+ if(t.dataset.ppr!==undefined){
+  const i=+t.dataset.ppr,v=Math.round(Number(t.value));
+  if(v>=0&&v<=99999999)P[i].pr=v;else toast(AT().ePr);
+  markDirty();paint();if(dI!==null)renderDetail();return;
+ }
+ if(invChange(t)){if(dI!==null)renderDetail();return}
+});
+document.addEventListener('click',e=>{
+ if(!adminOK)return;
+ const ed=e.target.closest('[data-edit],[data-edit-close]');
+ if(ed){if(dI===null)return;edOpen=ed.dataset.edit!==undefined?!edOpen:false;renderDetail();return}
+ const el=e.target.closest('[data-edl]');
+ if(el&&dI!==null){edLang=el.dataset.edl;renderDetail();return}
+});
+
 const heroList=()=>{const l=HS.list.filter(x=>x.on!==0&&x.on!==false);return l.length?l:HS.list.slice(0,1)};
 let lang='en',n=0,tt,cur=0,timer,vt,user=null,lt='in',curView='home',lastView='home';
 const vid={home:'top',shop:'v-shop',club:'v-club',my:'v-my',login:'v-login',cart:'v-cart',admin:'v-admin'};
@@ -828,13 +882,13 @@ function renderDetail(){
   +rv.map(x=>`<div class="rev"><div><span class="st">${stars(x.r)}</span> <b>${esc(x.a)}</b>${x.sample?`<em>${d.sample}</em>`:''}</div><p>${esc(x.t)}</p></div>`).join('')
   +`<form id="rf" class="rf" novalidate><h4>${d.wr}</h4><label>${d.fName}<input id="rn" type="text" maxlength="40"></label><label>${d.fRate}<select id="rr">${[5,4,3,2,1].map(k=>`<option value="${k}">${'★'.repeat(k)}</option>`).join('')}</select></label><label>${d.fText}<textarea id="rt" rows="4" maxlength="500"></textarea></label><button class="btn" type="submit">${d.fSend}</button><div class="msg" id="rm" role="status"></div><small>${d.noteRev}</small></form>`;
  else body=`<h4>${d.cH}</h4><p>${d.cP}</p><table class="ct">${[[d.coName,'World Swimming Club'],[d.rep,d.tba],[d.reg,d.tba],[d.addr,d.tba],[d.mail,'support@worldswimmingclub.example']].map(r=>`<tr><th>${r[0]}</th><td>${r[1]}</td></tr>`).join('')}</table>`;
- $('detail').innerHTML=`<button class="back" data-back>← ${d.back}</button>
+ $('detail').innerHTML=`<button class="back" data-back>← ${d.back}</button>${adminOK?`<button class="ubtn" data-edit="1" style="margin-left:14px">${edOpen?"Close edit":"Edit"}</button>`:''}
  <div class="dgrid"><div class="stage"><img src="${IMG[p.k+'B']}" alt="${t.n}"><span class="cap">${d.figBack}</span></div>
  <div class="di"><h1 class="disp">${t.n}</h1><div class="price" data-pr="${effPr(i)}">${won(effPr(i))}</div><div class="cnote">${d.curNote}</div><div class="sum"><span class="st">${stars(Math.round(avg))}</span> ${avg.toFixed(1)} · ${d.revN(rv.length)}</div><p>${t.d}</p>
  ${colorRow(i)}<div class="sizes" role="group" aria-label="${d.size}">${['S','M','L','XL'].map(s=>`${szBtn(i,s)}`).join('')}</div>
  <button class="btn" data-add="${i}">${d.add}</button></div></div>
  <div class="tabs" role="tablist">${[['d',d.tabD],['r',`${d.tabR} (${rv.length})`],['c',d.tabC]].map(x=>`<button role="tab" data-t="${x[0]}" aria-selected="${dTab===x[0]}">${x[1]}</button>`).join('')}</div>
- <div class="panel" role="tabpanel">${body}</div>`;
+ ${adminOK&&edOpen?editPanel(i):''}<div class="panel" role="tabpanel">${body}</div>`;
 }
 function openDetail(i){dI=i;dTab='d';lastView=curView;Object.values(vid).forEach(id=>$(id).hidden=true);$('detail').hidden=false;renderDetail();window.scrollTo(0,0);try{location.hash='p'+(i+1)}catch(e){}clearTimeout(it);introCb=null;$('intro').hidden=true;document.body.style.overflow='';enter()}
 function closeDetail(){dI=null;clearTimeout(it);$('intro').hidden=true;document.body.style.overflow='';$('detail').hidden=true;$(vid[lastView||'home']).hidden=false;curView=lastView||'home';try{if(/^#p\d/.test(location.hash))location.hash=curView==='home'?'drop':curView}catch(e){}}
@@ -1317,7 +1371,7 @@ function renderAdmin(){
  <div class="acard"><h4>${a.hsH}</h4><p>${a.hsP}</p>
   ${HS.list.map((x,i)=>`<div class="arow"><span class="grow">${x.t==='video'?a.hsVid:x.t==='logo'?a.hsLogo:x.t==='product'?a.hsProd+': '+PNAMES[x.p]:x.t==='vid'?a.hsVid+' '+(HS.list.slice(0,i+1).filter(y=>y.t==='vid').length):a.hsImg+' '+(HS.list.slice(0,i+1).filter(y=>y.t==='image').length)}</span>
    <button data-hm="-1" data-hi="${i}" ${i===0?'disabled':''}>${a.up}</button><button data-hm="1" data-hi="${i}" ${i===HS.list.length-1?'disabled':''}>${a.down}</button>
-   <label style="font-size:13px"><input type="checkbox" data-hon="${i}" ${(x.on===0||x.on===false)?'':'checked'}> ${a.show}</label>${(x.t==='image'||x.t==='vid')?`<button data-hd="${i}">${a.del}</button>`:''}</div>`).join('')}
+   ${replBtn(x)}<label style="font-size:13px"><input type="checkbox" data-hon="${i}" ${(x.on===0||x.on===false)?'':'checked'}> ${a.show}</label>${(x.t==='image'||x.t==='vid')?`<button data-hd="${i}">${a.del}</button>`:''}</div>`).join('')}
   <div class="arow"><label class="ubtn">${a.hsAdd}<input type="file" accept="image/*" data-up="slideadd" hidden></label> <label class="ubtn">${a.hsVidAdd}<input type="file" accept="video/*" data-up="slidevid" hidden></label>
    <label style="font-size:13px;display:flex;gap:8px;align-items:center">${a.hsDur}<input type="number" min="3" max="20" step="1" data-hdur value="${HS.dur}" style="width:70px;background:#000;border:1px solid var(--ash);color:var(--bone);padding:6px"></label></div>
   <p style="margin:6px 0 0">${a.hsImgNote}</p>
@@ -1346,7 +1400,7 @@ function renderAdmin(){
  <div class="acard"><h4>${a.layH}</h4><p>${a.layP}</p>${draft.home.map((k,i)=>`<div class="arow"><span class="grow">${sec(k)}</span>
   <button data-lm="-1" data-k="${k}" ${i===0?'disabled':''}>${a.up}</button><button data-lm="1" data-k="${k}" ${i===draft.home.length-1?'disabled':''}>${a.down}</button>
   ${k==='hero'?`<span style="color:var(--ash);font-size:12px">${a.always}</span>`:`<label style="font-size:13px"><input type="checkbox" data-lh="${k}" ${draft.hide.includes(k)?'':'checked'}> ${a.show}</label>`}</div>`).join('')}</div>
- <div class="acard"><h4>${a.clipH}</h4><p>${a.clipP}</p>${draft.clips.map((c,i)=>`<div class="arow"><img class="th" src="${c.t}" alt=""><span class="grow">CLIP ${String(i+1).padStart(2,'0')}</span>
+ <div class="acard"><h4>${a.clipH}</h4><p>${a.clipP}</p>${draft.clips.map((c,i)=>`<div class="arow"><img class="th" src="${c.t}" alt=""><label class="ubtn">${a.rep}<input type="file" accept="video/*" data-up="clipv:${i}" hidden></label><span class="grow">CLIP ${String(i+1).padStart(2,'0')}</span>
   <button data-cm="-1" data-ci="${i}" ${i===0?'disabled':''}>${a.up}</button><button data-cm="1" data-ci="${i}" ${i===draft.clips.length-1?'disabled':''}>${a.down}</button><button data-cm="del" data-ci="${i}">${a.del}</button></div>`).join('')}
   <div class="arow"><label class="ubtn">${a.clipAdd}<input type="file" accept="video/*" data-up="clip" hidden></label></div></div>
  <div class="acard"><h4>${a.posH}</h4><div class="pos"><label>${a.posX}<select data-hp="h">${['left','center','right'].map(v=>`<option value="${v}" ${draft.hero.h===v?'selected':''}>${a[v]}</option>`).join('')}</select></label>
@@ -1371,6 +1425,12 @@ function upErr(e){const a=AT(),c=e&&e.code;return c==='big'?a.eBig:c==='type'?a.
 async function handleUpload(inp){
  const key=inp.dataset.up,f=inp.files&&inp.files[0],a=AT();inp.value='';if(!f)return;
  try{
+  if(key.startsWith('clipv:')){
+   if(!/^video\//.test(f.type))throw{code:'type'};if(f.size>20*1048576)throw{code:'big'};
+   const ci=+key.slice(6);setMsg(a.upping);const url=await upAsset(f);
+   let th=draft.clips[ci].t;try{th=await upAsset(await videoThumb(f))}catch(e){}
+   draft.clips[ci].v=url;draft.clips[ci].t=th;CLIPS=draft.clips;renderClips();markDirty();setMsg('');renderAdmin();return;
+  }
   if(key==='slidevid'||key.startsWith('svid:')){
    if(!/^video\//.test(f.type))throw{code:'type'};if(f.size>20*1048576)throw{code:'big'};
    if(key==='slidevid'&&HS.list.filter(x=>x.t==='vid').length>=4){toast(a.hsMaxV);setMsg('');return}
