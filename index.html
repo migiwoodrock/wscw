@@ -373,7 +373,7 @@ body:not([data-cur="KRW"]) .cnote{display:block}
 .ptx select{background:#000;color:var(--bone);border:1px solid var(--ash);padding:9px 11px;font:inherit}
 .inum{width:90px;background:#000;color:var(--bone);border:1px solid var(--ash);padding:6px;font:inherit}
 .mute{color:var(--ash);font-size:13px}
-</style>
+#intro .lg img{width:calc(min(52vh,72vw) * var(--k-intro,1)) !important}.gl{width:calc(min(25vh,48vw) * var(--k-gate,1)) !important}.s2 img{width:calc(min(38vh,56vw) * var(--k-slide,1)) !important}.logo img{width:calc(52px * var(--k-head,1)) !important;height:calc(52px * var(--k-head,1)) !important}footer .fl img:first-child{width:calc(72px * var(--k-foot,1)) !important}</style>
 </head>
 <body>
 <div id="root"></div>
@@ -625,8 +625,8 @@ loadHero(CFG);
 /* ---------- inventory, sale status, manual orders ---------- */
 const INVSZ=['S','M','L','XL'];
 const IV={
-en:{wonL:"Discount (KRW)",soldOut:"Sold out",invH:"Inventory & orders",invP:"Set stock, size status and sale % for each color and size. Stock at 0 is sold out automatically. Changes go live after Save & publish.",colorsL:"Colors (comma separated)",size:"Size",status:"Status",sale:"Sale %",stock:"Stock",color:"Color",on:"On sale",sold:"Sold out",auto:"Sold out (stock 0)",ok:"In stock",ordH:"Manual order entry",ordP:"Record an order received outside this site (phone, DM, store). Stock goes down automatically.",product:"Product",qty:"Qty",memo:"Memo",ordAdd:"Record order",ordBad:"Check the color name, size, quantity and stock.",ordLog:"Order log",csvO:"Download orders (CSV)",csvS:"Download stock (CSV)",date:"Date",total:"Total",none:"No orders recorded yet.",note:"Orders placed on this site stay in each visitor's own browser, so they do not appear here. For now, record them with manual entry."},
-ja:{wonL:"割引額(KRW)",soldOut:"SOLD OUT",invH:"在庫・注文管理",invP:"色とサイズごとに在庫数、サイズの状態、セール率を設定します。在庫が0になると自動で SOLD OUT になります。変更は「保存して公開」の後に反映されます。",colorsL:"カラー（カンマ区切り）",size:"サイズ",status:"状態",sale:"セール率(%)",stock:"在庫",color:"カラー",on:"販売中",sold:"SOLD OUT",auto:"SOLD OUT（在庫0）",ok:"在庫あり",ordH:"注文の手入力",ordP:"電話・DM・店頭など、サイトの外で受けた注文を記録します。在庫は自動で減ります。",product:"商品",qty:"数量",memo:"メモ",ordAdd:"注文を記録",ordBad:"カラー名、サイズ、数量、在庫を確認してください。",ordLog:"注文履歴",csvO:"注文を保存（CSV）",csvS:"在庫を保存（CSV）",date:"日時",total:"合計",none:"まだ注文はありません。",note:"サイトで行われた注文は各訪問者のブラウザにだけ残るため、ここには表示されません。今は手入力で記録してください。"}
+en:{word:"Word",wordL:"Word",descL:"Description",startL:"Start time (seconds)",introH:"Intro animation",introP:"Edit the three intro words, their descriptions and when each one appears (in seconds from the start). Use the tabs for language.",logoAt:"Logo appears at (seconds)",logoH:"Logo sizes",logoP:"Size of each logo in percent. 100% is the default size.",lgIntro:"Intro logo",lgGate:"Entrance logo",lgSlide:"Hero logo slide",lgHead:"Header logo",lgFoot:"Footer logo",wonL:"Discount (KRW)",soldOut:"Sold out",invH:"Inventory & orders",invP:"Set stock, size status and sale % for each color and size. Stock at 0 is sold out automatically. Changes go live after Save & publish.",colorsL:"Colors (comma separated)",size:"Size",status:"Status",sale:"Sale %",stock:"Stock",color:"Color",on:"On sale",sold:"Sold out",auto:"Sold out (stock 0)",ok:"In stock",ordH:"Manual order entry",ordP:"Record an order received outside this site (phone, DM, store). Stock goes down automatically.",product:"Product",qty:"Qty",memo:"Memo",ordAdd:"Record order",ordBad:"Check the color name, size, quantity and stock.",ordLog:"Order log",csvO:"Download orders (CSV)",csvS:"Download stock (CSV)",date:"Date",total:"Total",none:"No orders recorded yet.",note:"Orders placed on this site stay in each visitor's own browser, so they do not appear here. For now, record them with manual entry."},
+ja:{word:"語",wordL:"語",descL:"説明",startL:"表示タイミング(秒)",introH:"イントロアニメーション",introP:"イントロの3つの語、説明文、表示されるタイミング(開始からの秒数)を編集できます。言語はタブで切り替えます。",logoAt:"ロゴが表示される時間(秒)",logoH:"ロゴのサイズ",logoP:"各ロゴのサイズを%で指定します。100%が標準です。",lgIntro:"イントロのロゴ",lgGate:"入口のロゴ",lgSlide:"ヒーローのロゴ",lgHead:"ヘッダーのロゴ",lgFoot:"フッターのロゴ",wonL:"割引額(KRW)",soldOut:"SOLD OUT",invH:"在庫・注文管理",invP:"色とサイズごとに在庫数、サイズの状態、セール率を設定します。在庫が0になると自動で SOLD OUT になります。変更は「保存して公開」の後に反映されます。",colorsL:"カラー（カンマ区切り）",size:"サイズ",status:"状態",sale:"セール率(%)",stock:"在庫",color:"カラー",on:"販売中",sold:"SOLD OUT",auto:"SOLD OUT（在庫0）",ok:"在庫あり",ordH:"注文の手入力",ordP:"電話・DM・店頭など、サイトの外で受けた注文を記録します。在庫は自動で減ります。",product:"商品",qty:"数量",memo:"メモ",ordAdd:"注文を記録",ordBad:"カラー名、サイズ、数量、在庫を確認してください。",ordLog:"注文履歴",csvO:"注文を保存（CSV）",csvS:"在庫を保存（CSV）",date:"日時",total:"合計",none:"まだ注文はありません。",note:"サイトで行われた注文は各訪問者のブラウザにだけ残るため、ここには表示されません。今は手入力で記録してください。"}
 };
 let INV={},ORD=[],selc={};
 const invDefColors=i=>P[i].k==='jkt'?['Charcoal']:['Black'];
@@ -776,6 +776,56 @@ document.addEventListener('click',e=>{
  if(el&&dI!==null){edLang=el.dataset.edl;renderDetail();return}
 });
 
+/* ---------- intro words + timing, logo sizes (admin) ---------- */
+let INTRO=null,LOGO=null,introLang=null;
+const LOGOK=['intro','gate','slide','head','foot'];
+const clampN=(v,a,b,d)=>{const x=Number(v);return isFinite(x)?Math.min(b,Math.max(a,x)):d};
+function loadIntro(c){
+ const src=(c&&c.intro)||{};
+ INTRO={at:[0,1,2].map(k=>clampN((src.at||[])[k],0,10,[0.3,1.5,2.7][k])),la:clampN(src.la,0,10,4.1),iw:{}};
+ ['en','ja'].forEach(l=>{
+  const base=T[l].iw.map(x=>[x[0],x[1]]);
+  const s=(src.iw&&src.iw[l])||null;
+  INTRO.iw[l]=base.map((x,k)=>(s&&Array.isArray(s[k]))?[String(s[k][0]||'').slice(0,60),String(s[k][1]||'').slice(0,160)]:x);
+  T[l].iw=INTRO.iw[l].map(x=>[x[0],x[1]]);
+ });
+}
+function loadLogo(c){const s=(c&&c.logo)||{};LOGO={};LOGOK.forEach(k=>{LOGO[k]=Math.round(clampN(s[k],30,200,100))})}
+function applyLogo(){const st=document.documentElement.style;LOGOK.forEach(k=>st.setProperty('--k-'+k,(LOGO[k]/100).toFixed(2)))}
+function introChange(t){
+ if(t.dataset.iw!==undefined){
+  const[l,k,j]=t.dataset.iw.split('|');
+  INTRO.iw[l][+k][+j]=t.value.slice(0,+j===0?60:160);
+  T[l].iw=INTRO.iw[l].map(x=>[x[0],x[1]]);
+ }
+ else if(t.dataset.iat!==undefined){const k=+t.dataset.iat;INTRO.at[k]=clampN(t.value,0,10,INTRO.at[k])}
+ else if(t.dataset.ila!==undefined){INTRO.la=clampN(t.value,0,10,INTRO.la)}
+ else if(t.dataset.lk!==undefined){LOGO[t.dataset.lk]=Math.round(clampN(t.value,30,200,100));applyLogo()}
+ else return false;
+ markDirty();paint();renderAdmin();return true;
+}
+function introCard(){
+ const v=IV[lang]||IV.en,il=introLang||lang;
+ const words=[0,1,2].map(k=>{const w=INTRO.iw[il][k]||['',''];return `<div class="ptx"><b>${v.word} ${k+1}</b>
+  <label>${v.wordL}<input data-iw="${il}|${k}|0" maxlength="60" value="${escH(w[0])}"></label>
+  <label>${v.descL}<textarea rows="2" data-iw="${il}|${k}|1" maxlength="160">${escH(w[1])}</textarea></label>
+  <label>${v.startL}<input type="number" min="0" max="10" step="0.1" data-iat="${k}" value="${INTRO.at[k]}" class="inum"></label></div>`}).join('');
+ const logos=[['intro',v.lgIntro],['gate',v.lgGate],['slide',v.lgSlide],['head',v.lgHead],['foot',v.lgFoot]]
+  .map(x=>`<label style="display:inline-grid;gap:4px;margin-right:14px;font-size:13px;font-weight:700">${x[1]} (%)<input type="number" min="30" max="200" step="5" data-lk="${x[0]}" value="${LOGO[x[0]]}" class="inum"></label>`).join('');
+ return `<div class="acard"><h4>${v.introH}</h4><p>${v.introP}</p>
+  <div class="tabs2" role="tablist">${[['en','EN'],['ja','日本語']].map(x=>`<button role="tab" data-ial="${x[0]}" aria-selected="${il===x[0]}">${x[1]}</button>`).join('')}</div>
+  ${words}
+  <label>${v.logoAt}<input type="number" min="0" max="10" step="0.1" data-ila value="${INTRO.la}" class="inum"></label>
+  <h4 style="margin-top:18px">${v.logoH}</h4><p>${v.logoP}</p>
+  <div style="display:flex;flex-wrap:wrap;gap:6px">${logos}</div></div>`;
+}
+document.addEventListener('click',e=>{
+ if(!adminOK)return;
+ const b=e.target.closest('[data-ial]');
+ if(b){introLang=b.dataset.ial;renderAdmin()}
+});
+
+loadIntro(CFG);loadLogo(CFG);applyLogo();
 const heroList=()=>{const l=HS.list.filter(x=>x.on!==0&&x.on!==false);return l.length?l:HS.list.slice(0,1)};
 let lang='en',n=0,tt,cur=0,timer,vt,user=null,lt='in',curView='home',lastView='home';
 const vid={home:'top',shop:'v-shop',club:'v-club',my:'v-my',login:'v-login',cart:'v-cart',admin:'v-admin'};
@@ -918,8 +968,8 @@ function startIntro(i,cb){
  if(matchMedia('(prefers-reduced-motion:reduce)').matches){el.hidden=true;if(introCb)introDone();else enter();return}
  const d=T[lang];
  el.className='';el.hidden=false;document.body.style.overflow='hidden';
- el.innerHTML=`<img class="bk" src="${IMG[P[i].k+'B']}" alt=""><div>${d.iw.map(w=>`<div class="wd"><b class="disp${w[0].length>14?' lg2':''}">${w[0]}</b><span>${w[1]}</span></div>`).join('')}</div><div class="fl"></div><div class="lg"><img src="${IMG.main}" alt="World Swimming Club"><p>${d.iT}</p></div><button class="skip" data-skip>${d.skip}</button>`;
- it=setTimeout(endIntro,6600);
+ el.innerHTML=`<img class="bk" src="${IMG[P[i].k+'B']}" alt=""><div>${d.iw.map((w,k)=>`<div class="wd" style="animation-delay:${INTRO.at[k]}s"><b class="disp${w[0].length>14?' lg2':''}">${w[0]}</b><span>${w[1]}</span></div>`).join('')}</div><div class="fl" style="animation-delay:${INTRO.la}s"></div><div class="lg" style="animation-delay:${INTRO.la}s"><img src="${IMG.main}" alt="World Swimming Club"><p>${d.iT}</p></div><button class="skip" data-skip>${d.skip}</button>`;
+ it=setTimeout(endIntro,(INTRO.la+2.6)*1000);
 }
 function endIntro(){clearTimeout(it);const el=$('intro');if(el.hidden||el.classList.contains('out'))return;el.classList.add('out');document.body.style.overflow='';setTimeout(()=>{if(el.classList.contains('out'))el.hidden=true},950);if(introCb)introDone();else enter()}
 function enter(){const dt=$('detail');dt.classList.remove('enter');void dt.offsetWidth;dt.classList.add('enter');setTimeout(()=>dt.classList.remove('enter'),4500)}
@@ -1271,7 +1321,7 @@ async function ghPut(path,b64,msg,sha){
 async function ghSave(){
  if(busy||!adminOK||!GH)return;busy=true;const a=AT();setMsg(a.saving);
  try{
-  draft.music=tracks.map(x=>Object.assign({},x));draft.pt=PTR;draft.pr=P.map(p=>p.pr);draft.inv=INV;draft.orders=ORD;draft.ht=HTR;draft.hs=HS;
+  draft.music=tracks.map(x=>Object.assign({},x));draft.pt=PTR;draft.pr=P.map(p=>p.pr);draft.inv=INV;draft.orders=ORD;draft.intro={at:INTRO.at,la:INTRO.la,iw:INTRO.iw};draft.logo=LOGO;draft.ht=HTR;draft.hs=HS;
   const cfg=clone(draft),files=[],MIME={'image/webp':'webp','image/jpeg':'jpg','image/png':'png','video/mp4':'mp4','video/webm':'webm','audio/mpeg':'mp3','audio/mp4':'m4a','audio/x-m4a':'m4a','audio/wav':'wav','audio/x-wav':'wav','audio/ogg':'ogg','audio/aac':'aac','audio/webm':'webm'};
   let n=0;
   const walk=o=>{for(const k in o){const v=o[k];
@@ -1352,7 +1402,7 @@ function applyLayout(){
 function discardDraft(silent){
  draft=clone(CFG);dirty=false;
  Object.keys(IMG).forEach(k=>delete IMG[k]);Object.assign(IMG,CFG.img);CLIPS=draft.clips;
- loadProd(CFG);loadHero(CFG);invLoad(CFG);tracks=JSON.parse(JSON.stringify(CFG.music||DEFMUS));mIdx=Math.min(mIdx,Math.max(0,tracks.length-1));if(!tracks.length){mStop();mPlaying=false}else if(mPlaying)mStart();
+ loadProd(CFG);loadHero(CFG);invLoad(CFG);loadIntro(CFG);loadLogo(CFG);applyLogo();tracks=JSON.parse(JSON.stringify(CFG.music||DEFMUS));mIdx=Math.min(mIdx,Math.max(0,tracks.length-1));if(!tracks.length){mStop();mPlaying=false}else if(mPlaying)mStart();
  applyLayout();applyHeroPos();paint();renderBar();renderMusic();if(!silent)renderAdmin();
 }
 function renderAdmin(){
@@ -1389,7 +1439,7 @@ function renderAdmin(){
    <label>${a.hsBtn}<input data-sid="${x.id}" data-sk="b" maxlength="120" value="${escH(t.b||'')}"></label>
    <label>${a.hsLink}<select data-sid="${x.id}" data-sk="link"><option value="shop" ${x.link==='shop'||!x.link?'selected':''}>${a.hsLShop}</option><option value="club" ${x.link==='club'?'selected':''}>${a.hsLClub}</option>${P.map((p,i)=>`<option value="p${i}" ${x.link==='p'+i?'selected':''}>${PNAMES[i]}</option>`).join('')}</select></label></div>`}).join('')}
  </div>
- ${invCard()}<div class="acard"><h4>${a.txH}</h4><p>${a.txP}</p>
+ ${introCard()}${invCard()}<div class="acard"><h4>${a.txH}</h4><p>${a.txP}</p>
   <div class="tabs2" role="tablist">${[['en','EN'],['ja','日本語']].map(x=>`<button role="tab" data-al="${x[0]}" aria-selected="${(adLang||lang)===x[0]}">${x[1]}</button>`).join('')}</div>
   ${P.map((p,i)=>{const al=adLang||lang,r=PTR[al][i];return `<div class="ptx"><b>${PNAMES[i]}</b>
    <label>${a.fN}<input data-pf="n" data-pi="${i}" maxlength="60" value="${escH(r.n||'')}"></label>
@@ -1466,7 +1516,7 @@ async function savePublish(){
  if(busy||!adminOK)return;busy=true;const a=AT();let mb='';setMsg(a.saving);
  try{
   const art=window.claude&&window.claude.use?await window.claude.use('artifact'):null;if(!art)throw{code:'not_writer'};
-  draft.music=tracks.map(x=>Object.assign({},x));draft.pt=PTR;draft.pr=P.map(p=>p.pr);draft.inv=INV;draft.orders=ORD;draft.ht=HTR;draft.hs=HS;
+  draft.music=tracks.map(x=>Object.assign({},x));draft.pt=PTR;draft.pr=P.map(p=>p.pr);draft.inv=INV;draft.orders=ORD;draft.intro={at:INTRO.at,la:INTRO.la,iw:INTRO.iw};draft.logo=LOGO;draft.ht=HTR;draft.hs=HS;
   const html=buildHtml(draft);mb=(html.length/1048576).toFixed(1);
   try{sessionStorage.setItem('wsc-admin','1')}catch(e){}
   setMsg(a.saving+' ('+mb+' MB)');
@@ -1492,6 +1542,7 @@ document.addEventListener('click',e=>{
 });
 $('v-admin').addEventListener('change',e=>{
  const t=e.target;if(!adminOK)return;
+ if(introChange(t))return;
  if(invChange(t))return;
  if(t.dataset.hon!==undefined){const x=HS.list[+t.dataset.hon];x.on=t.checked?1:0;if(!HS.list.some(y=>y.on!==0&&y.on!==false)){x.on=1;toast(AT().hsMin)}markDirty();paint();renderAdmin();return}
  if(t.dataset.hdur!==undefined){HS.dur=Math.min(20,Math.max(3,Math.round(Number(t.value))||6));markDirty();paint();renderAdmin();return}
